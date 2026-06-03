@@ -5,7 +5,8 @@
 
 import { useState, useRef, type MouseEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Send, Volume2, VolumeX, ArrowLeft, Star as StarIcon, Train, X, Copy, Check } from 'lucide-react';
+import { Sparkles, Send, Volume2, VolumeX, ArrowLeft, Star as StarIcon, Train, X, Copy, Check, Camera } from 'lucide-react';
+import PhotoAlbum from './PhotoAlbum';
 import hogwartsLogo from '../assets/Hogwarts_logo.jpg';
 import themeSong from '../assets/harry_potter_theme.mp3';
 import ticketImage from '../assets/BigliettoInternoPartecipazione.jpeg';
@@ -17,6 +18,7 @@ export default function App() {
   const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [hasStartedSong, setHasStartedSong] = useState(false);
   const [showTicket, setShowTicket] = useState(false);
+  const [showAlbum, setShowAlbum]   = useState(false);
   const [copiedIban, setCopiedIban] = useState(false);
 
   const copyIban = (e: MouseEvent) => {
@@ -222,8 +224,8 @@ export default function App() {
                 </div>
              </div>
 
-             {/* Call to action (RSVP & Gifts) */}
-             <div className="mt-16 w-full flex flex-col md:flex-row items-center justify-center gap-6 pb-8 shrink-0">
+             {/* Call to action (RSVP, Gifts & Album) */}
+             <div className="mt-16 w-full flex flex-col md:flex-row items-center justify-center gap-6 pb-8 shrink-0 flex-wrap">
                <button onClick={(e) => { e.stopPropagation(); setShowTicket(true); }} className="flex items-center gap-3 px-10 py-4 bg-[#8b1a1a] border-[3px] border-double border-[#d4af37] shadow-[0_5px_15px_rgba(139,26,26,0.4)] text-[#fdfaf1] font-cinzel tracking-[0.15em] uppercase hover:bg-[#7a1515] hover:shadow-[0_8px_25px_rgba(139,26,26,0.6)] hover:-translate-y-1 transition-all duration-500 rounded-sm group relative overflow-hidden w-full md:w-auto justify-center">
                  <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\%22100\%22 height=\%22100\%22 viewBox=\%220 0 100 100\%22 xmlns=\%22http://www.w3.org/2000/svg\%22%3E%3Cfilter id=\%22noise\%22%3E%3CfeTurbulence type=\%22fractalNoise\%22 baseFrequency=\%220.8\%22 numOctaves=\%224\%22 stitchTiles=\%22stitch\%22/%3E%3C/filter%3E%3Crect width=\%22100\%22 height=\%22100\%22 filter=\%22url(%23noise)\%22 opacity=\%220.1\%22/%3E%3C/svg%3E')] opacity-30 mix-blend-overlay"></div>
                  <Train size={20} className="text-[#d4af37] transition-transform group-hover:-translate-x-1 relative z-10" />
@@ -231,7 +233,7 @@ export default function App() {
                  <div className="absolute top-1 left-1 right-1 bottom-1 border border-[#d4af37]/30 pointer-events-none"></div>
                </button>
 
-               <a 
+               <a
                  href="https://wa.me/393319581921?text=Ciao!%20Siamo%20felici%20di%20confermare%20la%20nostra%20presenza%20al%20vostro%20matrimonio."
                  target="_blank"
                  rel="noopener noreferrer"
@@ -243,9 +245,20 @@ export default function App() {
                  <span className="font-bold relative z-10 text-sm sm:text-base drop-shadow-md">Invia il Gufo</span>
                  <div className="absolute top-1 left-1 right-1 bottom-1 border border-[#d4af37]/30 pointer-events-none"></div>
                </a>
+
+               <button onClick={(e) => { e.stopPropagation(); setShowAlbum(true); }} className="flex items-center gap-3 px-10 py-4 bg-[#2c1d11] border-[3px] border-double border-[#d4af37] shadow-[0_5px_15px_rgba(44,29,17,0.4)] text-[#fdfaf1] font-cinzel tracking-[0.15em] uppercase hover:bg-[#3d2918] hover:shadow-[0_8px_25px_rgba(44,29,17,0.6)] hover:-translate-y-1 transition-all duration-500 rounded-sm group relative overflow-hidden w-full md:w-auto justify-center">
+                 <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\%22100\%22 height=\%22100\%22 viewBox=\%220 0 100 100\%22 xmlns=\%22http://www.w3.org/2000/svg\%22%3E%3Cfilter id=\%22noise\%22%3E%3CfeTurbulence type=\%22fractalNoise\%22 baseFrequency=\%220.8\%22 numOctaves=\%224\%22 stitchTiles=\%22stitch\%22/%3E%3C/filter%3E%3Crect width=\%22100\%22 height=\%22100\%22 filter=\%22url(%23noise)\%22 opacity=\%220.1\%22/%3E%3C/svg%3E')] opacity-30 mix-blend-overlay"></div>
+                 <Camera size={20} className="text-[#d4af37] transition-transform group-hover:scale-110 relative z-10" />
+                 <span className="font-bold relative z-10 text-sm sm:text-base drop-shadow-md">Album della Magia</span>
+                 <div className="absolute top-1 left-1 right-1 bottom-1 border border-[#d4af37]/30 pointer-events-none"></div>
+               </button>
              </div>
           </motion.div>
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showAlbum && <PhotoAlbum onClose={() => setShowAlbum(false)} />}
       </AnimatePresence>
 
       <AnimatePresence>

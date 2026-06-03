@@ -1,5 +1,15 @@
 /// <reference types="vite/client" />
 
+interface ImportMetaEnv {
+  readonly VITE_AZURE_ACCOUNT_URL: string | undefined;
+  readonly VITE_AZURE_CONTAINER: string | undefined;
+  readonly VITE_AZURE_SAS: string | undefined;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+
 declare module '*.jpg' {
   const src: string;
   export default src;
