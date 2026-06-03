@@ -1,20 +1,51 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# 💌 Partecipazione — Nicolas e Giulia
 
-# Run and deploy your AI Studio app
+Invito digitale interattivo per il matrimonio di Nicolas Gentilucci e Giulia Cro.  
+Tema Harry Potter, con busta animata, musica e gestione RSVP via WhatsApp.
 
-This contains everything you need to run your app locally.
+**Live**: [nicogenti.github.io/Partecipazione](https://nicogenti.github.io/Partecipazione/)
 
-View your app in AI Studio: https://ai.studio/apps/b12da601-418b-4631-afa5-5c0f2e3f53ea
+## Stack
 
-## Run Locally
+- React 19 + TypeScript
+- Vite 6 + TailwindCSS 4
+- Motion (animazioni)
+- Lucide React (icone)
 
-**Prerequisites:**  Node.js
+## Sviluppo Locale
 
+**Prerequisiti**: Node.js 22+
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+```bash
+npm install
+npm run dev
+```
+
+L'app sarà disponibile su `http://localhost:3000`.
+
+## Deploy
+
+Il deploy su GitHub Pages avviene automaticamente ad ogni push sul branch `staging` tramite GitHub Actions.
+
+```
+staging → GitHub Actions (build + typecheck) → GitHub Pages
+```
+
+Per forzare un deploy manuale: Actions → "Deploy to GitHub Pages" → "Run workflow".
+
+## Struttura
+
+```
+src/
+  App.tsx       # componente principale
+  main.tsx      # entry point
+  index.css     # stili globali + font
+assets/
+  Hogwarts_logo.jpg
+  harry_potter_theme.mp3
+  albus-dumbledore-sign.jpg
+  BigliettoInternoPartecipazione.jpeg
+.github/
+  workflows/
+    deploy.yml  # CI/CD GitHub Actions
+```
