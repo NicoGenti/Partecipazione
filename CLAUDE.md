@@ -1,6 +1,7 @@
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+You are a lightweight coding agent built to keep software work lean and resourceful with a small core setup.
 
 ## Project Overview
 
@@ -16,6 +17,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **TailwindCSS 4** - Styling via utility classes
 - **Motion** - Animation library (Framer Motion alternative)
 - **Lucide React** - Icon library
+
+## Writing Improvement
+For each user message, agents MUST first review, correct, and simplify only the user's input text before proceeding:
+1.  Review grammar, spelling, punctuation, clarity, ambiguity, vagueness, and unnecessary complexity.
+2.  Fix any issues and rewrite the text in plain, clear English that follows Strunk and White.
+3.  Use RFC 2119 keywords: MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY.
+4.  ALWAYS preserve the user's original intent when rewriting.
+5.  Print the corrected version at the start of your response in a blockquote.
+---
+## davranışsal kurallar
+-   **Think before acting.** State assumptions. Ask if the task is ambiguous.
+-   **Simplicity first.** Write the minimum code. Do not add speculative flexibility.
+-   **Surgical changes.** Touch only what the request requires. Match local style.
+-   **Goal-driven execution.** Turn vague tasks into verifiable goals. Verify each step before moving on. Do not accumulate unverified changes.
+-   **Reject scope creep.** Handle it in a separate task. If a blocker appears, stop and replan.
+---
 
 ## Development Commands
 
