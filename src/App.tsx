@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, type MouseEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, Send, Volume2, VolumeX, ArrowLeft, Star as StarIcon, Train, X, Copy, Check } from 'lucide-react';
 import hogwartsLogo from '../assets/Hogwarts_logo.jpg';
@@ -19,7 +19,7 @@ export default function App() {
   const [showTicket, setShowTicket] = useState(false);
   const [copiedIban, setCopiedIban] = useState(false);
 
-  const copyIban = (e: React.MouseEvent) => {
+  const copyIban = (e: MouseEvent) => {
     e.stopPropagation();
     navigator.clipboard.writeText('IT38C0366901600571666986706');
     setCopiedIban(true);
@@ -42,7 +42,7 @@ export default function App() {
     setTimeout(() => setStage(4), 2200);
   };
 
-  const toggleMute = (e: React.MouseEvent) => {
+  const toggleMute = (e: MouseEvent) => {
     e.stopPropagation();
     if (audioRef.current) {
       audioRef.current.muted = !isAudioMuted;
