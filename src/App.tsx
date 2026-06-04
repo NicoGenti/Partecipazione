@@ -10,6 +10,7 @@ import AnimatedShaderBackground from '@/src/components/ui/animated-shader-backgr
 import PhotoAlbum from './PhotoAlbum';
 import { buildBlobUrl } from './azure';
 import { AnimateNumber } from '@/src/components/ui/animated-blur-number';
+import { GlassButton } from './components/ui/glass-button';
 import themeSong from '../assets/harry_potter_theme.mp3';
 
 const hogwartsLogo  = buildBlobUrl('static/Hogwarts_logo.jpg');
@@ -326,35 +327,44 @@ export default function App() {
              </motion.div>
 
              {/* Call to action (RSVP, Gifts & Album) */}
-             <motion.div variants={itemVariants} className="mt-8 md:mt-16 w-full flex flex-col md:flex-row items-center justify-center gap-6 pb-8 shrink-0 flex-wrap">
-               <motion.button onClick={(e) => { e.stopPropagation(); setShowTicket(true); }} whileTap={{ scale: 0.97 }} whileHover={{ scale: 1.02 }} className="flex items-center gap-3 px-10 py-4 bg-[#8b1a1a] border-[3px] border-double border-[#d4af37] shadow-[0_5px_15px_rgba(139,26,26,0.4)] text-[#fdfaf1] font-cinzel tracking-[0.15em] uppercase hover:bg-[#7a1515] hover:shadow-[0_8px_25px_rgba(139,26,26,0.6)] hover:-translate-y-1 transition-all duration-500 rounded-sm group relative overflow-hidden w-full md:w-auto justify-center">
-                 <div className="absolute inset-0 noise-overlay"></div>
-                 <Train size={20} className="text-[#d4af37] transition-transform group-hover:-translate-x-1 relative z-10" />
-                 <span className="font-bold relative z-10 text-sm sm:text-base drop-shadow-md">Partecipa Alla Magia</span>
-                 <div className="absolute top-1 left-1 right-1 bottom-1 border border-[#d4af37]/30 pointer-events-none"></div>
-               </motion.button>
+             <motion.div variants={itemVariants} className="mt-8 md:mt-16 w-full flex flex-col items-center pb-8 shrink-0">
+               <div className="flex flex-col items-stretch gap-3 w-full max-w-[280px]">
+               <GlassButton
+                 tint="crimson"
+                 variant="ghost"
+                 className="w-full"
+                 contentClassName="flex items-center gap-3 font-cinzel tracking-[0.15em] uppercase text-[#8b1a1a] text-sm font-bold"
+                 onClick={(e) => { e.stopPropagation(); setShowTicket(true); }}
+               >
+                 <Train size={18} className="text-[#8b1a1a] shrink-0" />
+                 <span className="text-center leading-tight">Partecipa<br />Alla Magia</span>
+               </GlassButton>
 
-               <motion.a
+               <GlassButton
+                 tint="emerald"
+                 variant="ghost"
                  href="https://wa.me/393319581921?text=Ciao!%20Siamo%20felici%20di%20confermare%20la%20nostra%20presenza%20al%20vostro%20matrimonio."
                  target="_blank"
                  rel="noopener noreferrer"
+                 className="w-full"
+                 contentClassName="flex items-center gap-3 font-cinzel tracking-[0.15em] uppercase text-[#1a4a2e] text-sm font-bold"
                  onClick={(e) => e.stopPropagation()}
-                 whileTap={{ scale: 0.97 }}
-                 whileHover={{ scale: 1.02 }}
-                 className="flex items-center gap-3 px-10 py-4 bg-[#1a4a2e] border-[3px] border-double border-[#d4af37] shadow-[0_5px_15px_rgba(26,74,46,0.4)] text-[#fdfaf1] font-cinzel tracking-[0.15em] uppercase hover:bg-[#133823] hover:shadow-[0_8px_25px_rgba(26,74,46,0.6)] hover:-translate-y-1 transition-all duration-500 rounded-sm group relative overflow-hidden w-full md:w-auto justify-center"
                >
-                 <div className="absolute inset-0 noise-overlay"></div>
-                 <Send size={20} className="text-[#d4af37] transition-transform group-hover:translate-x-1 group-hover:-translate-y-1 relative z-10" />
-                 <span className="font-bold relative z-10 text-sm sm:text-base drop-shadow-md">Invia il Gufo</span>
-                 <div className="absolute top-1 left-1 right-1 bottom-1 border border-[#d4af37]/30 pointer-events-none"></div>
-               </motion.a>
+                 <Send size={18} className="text-[#1a4a2e] shrink-0" />
+                 <span className="text-center leading-tight">Invia<br />il Gufo</span>
+               </GlassButton>
 
-               <motion.button onClick={(e) => { e.stopPropagation(); setShowAlbum(true); }} whileTap={{ scale: 0.97 }} whileHover={{ scale: 1.02 }} className="flex items-center gap-3 px-10 py-4 bg-[#2c1d11] border-[3px] border-double border-[#d4af37] shadow-[0_5px_15px_rgba(44,29,17,0.4)] text-[#fdfaf1] font-cinzel tracking-[0.15em] uppercase hover:bg-[#3d2918] hover:shadow-[0_8px_25px_rgba(44,29,17,0.6)] hover:-translate-y-1 transition-all duration-500 rounded-sm group relative overflow-hidden w-full md:w-auto justify-center">
-                 <div className="absolute inset-0 noise-overlay"></div>
-                 <Camera size={20} className="text-[#d4af37] transition-transform group-hover:scale-110 relative z-10" />
-                 <span className="font-bold relative z-10 text-sm sm:text-base drop-shadow-md">Album della Magia</span>
-                 <div className="absolute top-1 left-1 right-1 bottom-1 border border-[#d4af37]/30 pointer-events-none"></div>
-               </motion.button>
+               <GlassButton
+                 tint="umber"
+                 variant="ghost"
+                 className="w-full"
+                 contentClassName="flex items-center gap-3 font-cinzel tracking-[0.15em] uppercase text-[#2c1d11] text-sm font-bold"
+                 onClick={(e) => { e.stopPropagation(); setShowAlbum(true); }}
+               >
+                 <Camera size={18} className="text-[#2c1d11] shrink-0" />
+                 <span className="text-center leading-tight">Album<br />della Magia</span>
+               </GlassButton>
+               </div>
              </motion.div>
           </motion.div>
         )}
