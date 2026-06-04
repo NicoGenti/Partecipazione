@@ -1,12 +1,16 @@
-import { useState, useEffect, useRef, useCallback, type CSSProperties, type ChangeEvent } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, type CSSProperties, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Upload, Images, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Upload, Images, Loader2, AlertCircle, LayoutGrid, Orbit } from 'lucide-react';
 import { isConfigured, uploadPhoto, listPhotos, fetchPhotoBlob, genUUID, buildBlobUrl } from './azure';
+import SphereImageGrid, { type ImageData } from '@/src/components/ui/img-sphere';
 
 const hogwartsLogo = buildBlobUrl('static/Hogwarts_logo.jpg');
 import PrivacyModal, { getStoredConsent, type ConsentData } from './PrivacyModal';
 
 const WATERMARK_TEXT = 'Nicolas & Giulia · 12.09.2026';
+
+/** Minimum loaded photos before the 3D sphere view is offered; below this the grid is shown. */
+const SPHERE_MIN_PHOTOS = 6;
 
 function applyWatermark(imageBitmap: ImageBitmap): string {
   const canvas = document.createElement('canvas');
@@ -62,6 +66,34 @@ export default function PhotoAlbum({ onClose }: Props) {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadCount, setUploadCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [view, setView]           = useState<'grid' | 'sphere'>('grid');
+  const [sphereSize, setSphereSize] = useState(0);
+  const galleryRef = useRef<HTMLDivElement>(null);
+
+  // Photos that finished loading + watermarking, ready to feed the sphere.
+  const sphereImages = useMemo<ImageData[]>(
+    () =>
+      gallery
+        .filter((g) => g.dataUrl)
+        .map((g) => ({ id: g.blobPath, src: g.dataUrl as string, alt: '' })),
+    [gallery],
+  );
+
+  const canShowSphere = sphereImages.length >= SPHERE_MIN_PHOTOS;
+  // Fall back to grid if the sphere no longer has enough photos.
+  const effectiveView = view === 'sphere' && canShowSphere ? 'sphere' : 'grid';
+
+  // Keep the sphere sized to the available width (responsive, capped on desktop).
+  useEffect(() => {
+    const el = galleryRef.current;
+    if (!el) return;
+    const measure = () => setSphereSize(Math.min(el.clientWidth, 560));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const loadGallery = useCallback(async () => {
     if (!configured) return;
@@ -210,8 +242,59 @@ export default function PhotoAlbum({ onClose }: Props) {
           />
         </div>
 
+        {/* Grid / Sphere view toggle */}
+        {canShowSphere && (
+          <div className="flex items-center justify-center pb-6 shrink-0">
+            <div className="inline-flex rounded-sm border border-[#d4af37]/40 bg-[#1a4a2e]/5 p-1 gap-1" role="group" aria-label="Modalità di visualizzazione">
+              <button
+                onClick={() => setView('grid')}
+                aria-pressed={effectiveView === 'grid'}
+                className={`flex items-center gap-2 px-4 py-2 rounded-sm font-cinzel text-xs uppercase tracking-widest transition-colors ${
+                  effectiveView === 'grid'
+                    ? 'bg-[#1a4a2e] text-[#fdfaf1]'
+                    : 'text-[#1a4a2e]/70 hover:text-[#1a4a2e]'
+                }`}
+              >
+                <LayoutGrid size={16} className={effectiveView === 'grid' ? 'text-[#d4af37]' : ''} />
+                <span>Griglia</span>
+              </button>
+              <button
+                onClick={() => setView('sphere')}
+                aria-pressed={effectiveView === 'sphere'}
+                className={`flex items-center gap-2 px-4 py-2 rounded-sm font-cinzel text-xs uppercase tracking-widest transition-colors ${
+                  effectiveView === 'sphere'
+                    ? 'bg-[#1a4a2e] text-[#fdfaf1]'
+                    : 'text-[#1a4a2e]/70 hover:text-[#1a4a2e]'
+                }`}
+              >
+                <Orbit size={16} className={effectiveView === 'sphere' ? 'text-[#d4af37]' : ''} />
+                <span>Sfera</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Gallery */}
-        <div className="flex-grow px-4 sm:px-8 pb-12">
+        <div ref={galleryRef} className="flex-grow px-4 sm:px-8 pb-12">
+          {effectiveView === 'sphere' && sphereSize > 0 && (
+            <div className="flex flex-col items-center">
+              <SphereImageGrid
+                images={sphereImages}
+                containerSize={sphereSize}
+                autoRotate
+                autoRotateSpeed={0.18}
+                dragSensitivity={0.8}
+                momentumDecay={0.96}
+                baseImageScale={0.16}
+              />
+              <p className="font-body text-xs text-[#1a4a2e]/50 text-center mt-2">
+                Trascina per ruotare · tocca una foto per ingrandirla
+              </p>
+            </div>
+          )}
+
+          {effectiveView === 'grid' && (
+          <>
           {listError && (
             <div className="flex items-center justify-center gap-2 text-[#8b1a1a]/80 font-body text-sm py-8">
               <AlertCircle size={16} />
@@ -274,6 +357,8 @@ export default function PhotoAlbum({ onClose }: Props) {
                 ))}
               </AnimatePresence>
             </div>
+          )}
+          </>
           )}
         </div>
       </motion.div>
