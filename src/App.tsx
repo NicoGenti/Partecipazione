@@ -6,12 +6,15 @@
 import { useState, useRef, useEffect, type MouseEvent, type KeyboardEvent } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { Sparkles, Send, Volume2, VolumeX, ArrowLeft, Star as StarIcon, Train, X, Copy, Check, Camera } from 'lucide-react';
+import AnimatedShaderBackground from '@/src/components/ui/animated-shader-background';
 import PhotoAlbum from './PhotoAlbum';
+import { buildBlobUrl } from './azure';
 import { AnimateNumber } from '@/src/components/ui/animated-blur-number';
-import hogwartsLogo from '../assets/Hogwarts_logo.jpg';
 import themeSong from '../assets/harry_potter_theme.mp3';
-import ticketImage from '../assets/BigliettoInternoPartecipazione.jpeg';
-import dumbledoreSign from '../assets/albus-dumbledore-sign.jpg';
+
+const hogwartsLogo  = buildBlobUrl('static/Hogwarts_logo.jpg');
+const ticketImage   = buildBlobUrl('static/BigliettoInternoPartecipazione.jpeg');
+const dumbledoreSign = buildBlobUrl('static/albus-dumbledore-sign.jpg');
 
 export default function App() {
   const [stage, setStage] = useState(0);
@@ -95,7 +98,10 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#0c0d12] overflow-hidden flex items-center justify-center font-body text-[#1a1a1a] perspective-[1200px] selection:bg-[#1a4a2e] selection:text-[#fdfaf1]" style={{ background: 'radial-gradient(circle at center, #1a1c25 0%, #0c0d12 100%)' }}>
-      
+
+      {/* Animated shader background */}
+      <AnimatedShaderBackground paused={!!prefersReducedMotion} className="fixed inset-0 z-0 w-full h-full" />
+
       {/* Audio Element */}
       <audio ref={audioRef} src={themeSong} loop />
 
@@ -116,16 +122,16 @@ export default function App() {
       </AnimatePresence>
 
       {/* Floating abstract decorative pieces */}
-      <div className="absolute top-10 left-10 w-24 h-48 bg-[#fdfaf1] rounded-sm shadow-2xl opacity-10 rotate-[-15deg] border border-white/10 pointer-events-none"></div>
-      <div className="absolute bottom-20 right-10 w-32 h-20 bg-[#fdfaf1] rounded-sm shadow-2xl opacity-10 rotate-[10deg] border border-white/10 pointer-events-none"></div>
+      <div className="absolute top-10 left-10 w-24 h-48 bg-[#fdfaf1] rounded-sm shadow-2xl opacity-[0.05] rotate-[-15deg] border border-white/10 pointer-events-none"></div>
+      <div className="absolute bottom-20 right-10 w-32 h-20 bg-[#fdfaf1] rounded-sm shadow-2xl opacity-[0.05] rotate-[10deg] border border-white/10 pointer-events-none"></div>
       <div className="absolute top-20 right-40 flex flex-col gap-8 pointer-events-none hidden md:flex">
         <div className="w-2 h-16 bg-gradient-to-b from-transparent via-yellow-200/40 to-yellow-500/60 rounded-full blur-[2px]"></div>
         <div className="w-2 h-24 bg-gradient-to-b from-transparent via-yellow-200/40 to-yellow-500/60 rounded-full blur-[2px] ml-12"></div>
       </div>
       <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-[0.03]" style={{ background: 'linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%, #000), linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%, #000)', backgroundSize: '2px 2px' }}></div>
 
-      {/* Mystical particles background (CSS-based) - optional */}
-      <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+      {/* Mystical particles background (CSS-based) */}
+      <div className="absolute inset-0 opacity-[0.07] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
 
       <AnimatePresence>
         {stage < 4 && (

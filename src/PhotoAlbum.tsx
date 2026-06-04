@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback, type CSSProperties, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Upload, Images, Loader2, AlertCircle } from 'lucide-react';
-import hogwartsLogo from '../assets/Hogwarts_logo.jpg';
-import { isConfigured, uploadPhoto, listPhotos, fetchPhotoBlob, genUUID } from './azure';
+import { isConfigured, uploadPhoto, listPhotos, fetchPhotoBlob, genUUID, buildBlobUrl } from './azure';
+
+const hogwartsLogo = buildBlobUrl('static/Hogwarts_logo.jpg');
 import PrivacyModal, { getStoredConsent, type ConsentData } from './PrivacyModal';
 
 const WATERMARK_TEXT = 'Nicolas & Giulia · 12.09.2026';

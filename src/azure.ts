@@ -8,7 +8,7 @@ export function isConfigured(): boolean {
   return !!(ACCOUNT_URL && CONTAINER && SAS);
 }
 
-function buildBlobUrl(blobPath: string): string {
+export function buildBlobUrl(blobPath: string): string {
   return `${ACCOUNT_URL}/${CONTAINER}/${blobPath}?${SAS}`;
 }
 
