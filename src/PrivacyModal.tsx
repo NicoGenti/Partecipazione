@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Shield } from 'lucide-react';
-import { saveConsent, genUUID } from './azure';
+import { saveConsent, fetchConsentTemplate, saveConsentDocument, genUUID } from './azure';
 
 const CONSENT_VERSION = 'v1';
 const STORAGE_KEY     = 'partecipazione_consent';
@@ -62,12 +62,37 @@ export default function PrivacyModal({ onAccepted, onClose }: Props) {
       },
     };
 
-    try {
-      await saveConsent(record);
-    } catch {
-      // Se il salvataggio fallisce per un problema di rete/config, non blocchiamo l'utente.
-      // Il consenso è comunque registrato localmente.
-    }
+    const timestampSlug = record.timestamp.replace(/[:.]/g, '-');
+    const displayName   = nickname.trim() || 'Ospite anonimo';
+
+    const templateUrl = import.meta.env.VITE_CONSENT_TEMPLATE_URL;
+
+    const escHtml = (s: string) =>
+      s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    const saveHtmlDocument = async () => {
+      if (!templateUrl) return;
+      let ip = 'IP non disponibile';
+      try {
+        const ipRes = await fetch('https://ipapi.co/json/');
+        if (ipRes.ok) {
+          const ipData = await ipRes.json() as { ip?: string };
+          ip = ipData.ip ?? ip;
+        }
+      } catch { /* fall back to default */ }
+
+      const template = await fetchConsentTemplate(templateUrl);
+      const filled = template
+        .replaceAll('{{NICKNAME}}', escHtml(displayName))
+        .replaceAll('{{DEVICE_ID}}', escHtml(deviceId))
+        .replaceAll('{{TIMESTAMP}}', escHtml(record.timestamp))
+        .replaceAll('{{IP_ADDRESS}}', escHtml(ip))
+        .replaceAll('{{CONSENT_TEXT_VERSION}}', escHtml(CONSENT_VERSION));
+      await saveConsentDocument(deviceId, timestampSlug, filled);
+    };
+
+    await Promise.allSettled([saveConsent(record), saveHtmlDocument()]);
 
     const consentData: ConsentData = { deviceId, accepted: true, nickname: nickname.trim() };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(consentData));

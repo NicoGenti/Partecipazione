@@ -52,6 +52,28 @@ export async function fetchPhotoBlob(blobPath: string): Promise<Blob> {
   return res.blob();
 }
 
+export async function fetchConsentTemplate(templateUrl: string): Promise<string> {
+  const res = await fetch(templateUrl);
+  if (!res.ok) throw new Error(`Template fetch failed: ${res.status}`);
+  return res.text();
+}
+
+export async function saveConsentDocument(deviceId: string, timestamp: string, html: string): Promise<void> {
+  const path = `consents/${deviceId}-${timestamp}.html`;
+  const url  = buildBlobUrl(path);
+
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      'x-ms-blob-type': 'BlockBlob',
+      'Content-Type': 'text/html',
+    },
+    body: html,
+  });
+
+  if (!res.ok) throw new Error(`Consent document save failed: ${res.status}`);
+}
+
 export async function saveConsent(record: object): Promise<void> {
   const now = new Date().toISOString().replace(/[:.]/g, '-');
   const deviceId = (record as Record<string, string>).deviceId ?? genUUID();
