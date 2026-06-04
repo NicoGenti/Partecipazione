@@ -38,9 +38,10 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_AZURE_ACCOUNT_URL: ${{ secrets.AZURE_ACCOUNT_URL }}
-          VITE_AZURE_CONTAINER:   ${{ secrets.AZURE_CONTAINER }}
-          VITE_AZURE_SAS:         ${{ secrets.AZURE_SAS }}
+          VITE_AZURE_ACCOUNT_URL:    ${{ secrets.AZURE_ACCOUNT_URL }}
+          VITE_AZURE_CONTAINER:      ${{ secrets.AZURE_CONTAINER }}
+          VITE_AZURE_SAS:            ${{ secrets.AZURE_SAS }}
+          VITE_WATERMARK_ENABLED:    ${{ vars.VITE_WATERMARK_ENABLED }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

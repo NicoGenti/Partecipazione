@@ -8,9 +8,19 @@ const hogwartsLogo = buildBlobUrl('static/Hogwarts_logo.jpg');
 import PrivacyModal, { getStoredConsent, type ConsentData } from './PrivacyModal';
 
 const WATERMARK_TEXT = 'Nicolas & Giulia · 12.09.2026';
+const WATERMARK_ENABLED = import.meta.env.VITE_WATERMARK_ENABLED === 'true';
 
 /** Minimum loaded photos before the 3D sphere view is offered; below this the grid is shown. */
 const SPHERE_MIN_PHOTOS = 6;
+
+function toDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
 
 function applyWatermark(imageBitmap: ImageBitmap): string {
   const canvas = document.createElement('canvas');
@@ -111,15 +121,17 @@ export default function PhotoAlbum({ onClose }: Props) {
 
   useEffect(() => { loadGallery(); }, [loadGallery]);
 
-  // Load each image blob → watermark → dataUrl
+  // Load each image blob → (optionally watermark) → dataUrl
   useEffect(() => {
     gallery.forEach((item, idx) => {
       if (item.dataUrl !== null || !item.loading || item.error) return;
       fetchPhotoBlob(item.blobPath)
-        .then(blob => createImageBitmap(blob))
-        .then(bmp => {
-          const dataUrl = applyWatermark(bmp);
-          bmp.close();
+        .then(blob =>
+          WATERMARK_ENABLED
+            ? createImageBitmap(blob).then(bmp => { const d = applyWatermark(bmp); bmp.close(); return d; })
+            : toDataUrl(blob)
+        )
+        .then(dataUrl => {
           setGallery(prev => prev.map((g, i) => i === idx ? { ...g, dataUrl, loading: false } : g));
         })
         .catch(() => {
