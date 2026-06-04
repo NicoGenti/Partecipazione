@@ -3,10 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useRef, type MouseEvent, type KeyboardEvent } from 'react';
+import { useState, useRef, useEffect, type MouseEvent, type KeyboardEvent } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { Sparkles, Send, Volume2, VolumeX, ArrowLeft, Star as StarIcon, Train, X, Copy, Check, Camera } from 'lucide-react';
 import PhotoAlbum from './PhotoAlbum';
+import { AnimateNumber } from '@/src/components/ui/animated-blur-number';
 import hogwartsLogo from '../assets/Hogwarts_logo.jpg';
 import themeSong from '../assets/harry_potter_theme.mp3';
 import ticketImage from '../assets/BigliettoInternoPartecipazione.jpeg';
@@ -22,6 +23,18 @@ export default function App() {
   const [copiedIban, setCopiedIban] = useState(false);
   const prefersReducedMotion = useReducedMotion();
   const ticketButtonRef = useRef<HTMLDivElement>(null);
+
+  const WEDDING = new Date("2026-09-12T17:00:00").getTime();
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const timeRemaining = Math.max(0, WEDDING - now);
+  const daysLeft = Math.floor(timeRemaining / 86_400_000);
+  const hoursLeft = Math.floor((timeRemaining % 86_400_000) / 3_600_000);
+  const minutesLeft = Math.floor((timeRemaining % 3_600_000) / 60_000);
+  const secondsLeft = Math.floor((timeRemaining % 60_000) / 1_000);
 
   const copyIban = (e: MouseEvent) => {
     e.stopPropagation();
@@ -248,6 +261,53 @@ export default function App() {
                 <motion.div variants={itemVariants} className="pt-4 text-sm opacity-90 space-y-1">
                   <p>È gradita gentile conferma entro il 12/08/2026</p>
                   <p className="font-bold tracking-wide">331 958 1921 — 366 204 1886</p>
+                </motion.div>
+
+                <motion.div variants={itemVariants} className="flex flex-col items-center gap-2 my-6">
+                  <span className="font-cinzel text-xs tracking-widest text-[#1a4a2e] uppercase opacity-70">
+                    Mancano al matrimonio
+                  </span>
+                  <div className="flex items-baseline gap-2 justify-center flex-wrap">
+                    <div className="flex items-baseline gap-1">
+                      <AnimateNumber
+                        value={daysLeft}
+                        duration={600}
+                        blur={16}
+                        className="font-cinzel text-3xl sm:text-4xl font-bold text-[#d4af37]"
+                      />
+                      <span className="font-cinzel text-xs text-[#1a4a2e] opacity-70">giorni</span>
+                    </div>
+                    <span className="font-cinzel text-[#1a4a2e] opacity-50 text-sm">e</span>
+                    <div className="flex items-baseline gap-1">
+                      <AnimateNumber
+                        value={hoursLeft}
+                        duration={600}
+                        blur={16}
+                        className="font-cinzel text-3xl sm:text-4xl font-bold text-[#d4af37]"
+                      />
+                      <span className="font-cinzel text-xs text-[#1a4a2e] opacity-70">ore</span>
+                    </div>
+                    <span className="font-cinzel text-[#1a4a2e] opacity-50 text-sm">e</span>
+                    <div className="flex items-baseline gap-1">
+                      <AnimateNumber
+                        value={minutesLeft}
+                        duration={600}
+                        blur={16}
+                        className="font-cinzel text-3xl sm:text-4xl font-bold text-[#d4af37]"
+                      />
+                      <span className="font-cinzel text-xs text-[#1a4a2e] opacity-70">minuti</span>
+                    </div>
+                    <span className="font-cinzel text-[#1a4a2e] opacity-50 text-sm">e</span>
+                    <div className="flex items-baseline gap-1">
+                      <AnimateNumber
+                        value={secondsLeft}
+                        duration={600}
+                        blur={16}
+                        className="font-cinzel text-3xl sm:text-4xl font-bold text-[#d4af37]"
+                      />
+                      <span className="font-cinzel text-xs text-[#1a4a2e] opacity-70">secondi</span>
+                    </div>
+                  </div>
                 </motion.div>
              </motion.div>
 
