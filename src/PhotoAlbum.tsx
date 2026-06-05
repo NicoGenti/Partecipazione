@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo, type CSSProperties, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Upload, Images, Loader2, AlertCircle, LayoutGrid, Orbit } from 'lucide-react';
+import { ArrowLeft, Upload, Images, Loader2, AlertCircle, LayoutGrid, Orbit, ChevronLeft, ChevronRight } from 'lucide-react';
 import { isConfigured, uploadPhoto, listPhotos, fetchPhotoBlob, genUUID, buildBlobUrl } from './azure';
 import SphereImageGrid, { type ImageData } from '@/src/components/ui/img-sphere';
+import ImageLightbox from '@/src/components/ui/image-lightbox';
 
 const hogwartsLogo = buildBlobUrl('static/Hogwarts_logo.jpg');
 import PrivacyModal, { getStoredConsent, type ConsentData } from './PrivacyModal';
@@ -12,6 +13,7 @@ const WATERMARK_ENABLED = import.meta.env.VITE_WATERMARK_ENABLED === 'true';
 
 /** Minimum loaded photos before the 3D sphere view is offered; below this the grid is shown. */
 const SPHERE_MIN_PHOTOS = 6;
+const GRID_PAGE_SIZE = 12;
 
 function toDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -79,10 +81,12 @@ export default function PhotoAlbum({ onClose }: Props) {
 
   const [view, setView]           = useState<'grid' | 'sphere'>('grid');
   const [sphereSize, setSphereSize] = useState(0);
+  const [gridPage, setGridPage]   = useState(0);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const galleryRef = useRef<HTMLDivElement>(null);
 
-  // Photos that finished loading + watermarking, ready to feed the sphere.
-  const sphereImages = useMemo<ImageData[]>(
+  // Photos that finished loading + watermarking, ready to feed the sphere and lightbox.
+  const loadedImages = useMemo<ImageData[]>(
     () =>
       gallery
         .filter((g) => g.dataUrl)
@@ -90,9 +94,19 @@ export default function PhotoAlbum({ onClose }: Props) {
     [gallery],
   );
 
-  const canShowSphere = sphereImages.length >= SPHERE_MIN_PHOTOS;
+  const openLightbox = useCallback((blobPath: string) => {
+    const idx = loadedImages.findIndex((img) => img.id === blobPath);
+    if (idx !== -1) setLightboxIndex(idx);
+  }, [loadedImages]);
+
+  const canShowSphere = loadedImages.length >= SPHERE_MIN_PHOTOS;
   // Fall back to grid if the sphere no longer has enough photos.
   const effectiveView = view === 'sphere' && canShowSphere ? 'sphere' : 'grid';
+
+  // Grid pagination
+  const pageCount = Math.ceil(gallery.length / GRID_PAGE_SIZE);
+  const safePage = Math.min(gridPage, Math.max(0, pageCount - 1));
+  const pagedGallery = gallery.slice(safePage * GRID_PAGE_SIZE, (safePage + 1) * GRID_PAGE_SIZE);
 
   // Keep the sphere sized to the available width (responsive, capped on desktop).
   useEffect(() => {
@@ -291,13 +305,14 @@ export default function PhotoAlbum({ onClose }: Props) {
           {effectiveView === 'sphere' && sphereSize > 0 && (
             <div className="flex flex-col items-center">
               <SphereImageGrid
-                images={sphereImages}
+                images={loadedImages}
                 containerSize={sphereSize}
                 autoRotate
                 autoRotateSpeed={0.18}
                 dragSensitivity={0.8}
                 momentumDecay={0.96}
                 baseImageScale={0.16}
+                onImageClick={(img) => openLightbox(img.id)}
               />
               <p className="font-body text-xs text-[#1a4a2e]/50 text-center mt-2">
                 Trascina per ruotare · tocca una foto per ingrandirla
@@ -331,17 +346,23 @@ export default function PhotoAlbum({ onClose }: Props) {
           )}
 
           {gallery.length > 0 && (
+            <>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               <AnimatePresence>
-                {gallery.map((item, idx) => (
+                {pagedGallery.map((item, idx) => (
                   <motion.div
                     key={item.blobPath}
                     initial={{ opacity: 0, scale: 0.92 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: idx * 0.04, duration: 0.3 }}
-                    className="relative aspect-square bg-[#1a4a2e]/5 rounded-sm overflow-hidden border border-[#d4af37]/30"
+                    className={`relative aspect-square bg-[#1a4a2e]/5 rounded-sm overflow-hidden border border-[#d4af37]/30 ${item.dataUrl ? 'cursor-pointer hover:border-[#d4af37] transition-colors' : ''}`}
                     onContextMenu={(e) => e.preventDefault()}
                     draggable={false}
+                    role={item.dataUrl ? 'button' : undefined}
+                    tabIndex={item.dataUrl ? 0 : undefined}
+                    aria-label={item.dataUrl ? 'Visualizza foto ingrandita' : undefined}
+                    onClick={() => item.dataUrl && openLightbox(item.blobPath)}
+                    onKeyDown={(e) => { if (item.dataUrl && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openLightbox(item.blobPath); } }}
                   >
                     {item.loading && (
                       <div className="absolute inset-0 flex items-center justify-center">
@@ -363,12 +384,36 @@ export default function PhotoAlbum({ onClose }: Props) {
                         style={{ userSelect: 'none', WebkitUserDrag: 'none' } as CSSProperties}
                       />
                     )}
-                    {/* Transparent overlay to block pointer interactions on the image */}
-                    <div className="absolute inset-0 pointer-events-none select-none" />
                   </motion.div>
                 ))}
               </AnimatePresence>
             </div>
+
+            {/* Grid pagination */}
+            {pageCount > 1 && (
+              <div className="flex items-center justify-center gap-4 mt-6">
+                <button
+                  onClick={() => setGridPage((p) => Math.max(0, p - 1))}
+                  disabled={safePage === 0}
+                  className="w-10 h-10 flex items-center justify-center rounded-sm border border-[#d4af37]/40 text-[#1a4a2e] hover:bg-[#1a4a2e]/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Pagina precedente"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <span className="font-cinzel text-xs uppercase tracking-widest text-[#1a4a2e]/70">
+                  Pagina {safePage + 1} / {pageCount}
+                </span>
+                <button
+                  onClick={() => setGridPage((p) => Math.min(pageCount - 1, p + 1))}
+                  disabled={safePage === pageCount - 1}
+                  className="w-10 h-10 flex items-center justify-center rounded-sm border border-[#d4af37]/40 text-[#1a4a2e] hover:bg-[#1a4a2e]/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Pagina successiva"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            )}
+            </>
           )}
           </>
           )}
@@ -383,6 +428,15 @@ export default function PhotoAlbum({ onClose }: Props) {
           />
         )}
       </AnimatePresence>
+
+      {lightboxIndex !== null && (
+        <ImageLightbox
+          images={loadedImages}
+          index={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onNavigate={(idx) => setLightboxIndex(idx)}
+        />
+      )}
     </>
   );
 }
