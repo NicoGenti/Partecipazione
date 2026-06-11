@@ -71,6 +71,15 @@
   border: 1px solid var(--rule);
 }
 
+/* ── Letter sheet (main page container) ───────────────────────── */
+
+.letter-sheet {
+  background-color: var(--surface);
+  background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E");
+  border: 1px solid var(--rule);
+  box-shadow: 0 24px 60px -24px rgba(42, 33, 24, 0.28);
+}
+
 /* ── PhotoAlbum / overlay surfaces (always parchment, unchanged) ─ */
 
 .paper-surface {

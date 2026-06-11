@@ -17,8 +17,7 @@
     <script>
       (function () {
         var s = localStorage.getItem('ng-theme');
-        var d = s ? s === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
-        document.documentElement.dataset.theme = d ? 'dark' : 'light';
+        document.documentElement.dataset.theme = s === 'dark' ? 'dark' : 'light';
       })();
     </script>
   </head>

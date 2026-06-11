@@ -239,8 +239,8 @@ export default function App() {
 
       {/* Page content — fades in after intro */}
       <motion.div
-        animate={{ opacity: introDone ? 1 : 0, y: introDone ? 0 : 24 }}
-        transition={{ duration: 0.7, ease: 'easeOut' }}
+        animate={{ opacity: introDone ? 1 : 0, scale: introDone ? 1 : 0.96 }}
+        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
         inert={!introDone || undefined}
       >
         {/* Skip link */}
@@ -313,10 +313,18 @@ export default function App() {
           </button>
         </header>
 
+        <div className="letter-sheet mx-3 sm:mx-auto max-w-3xl sm:mt-8 sm:mb-12 mt-4 mb-8 rounded-[3px] overflow-hidden">
         <main id="contenuto">
 
           {/* ── Hero ─────────────────────────────────────────────── */}
-          <section className="max-w-2xl mx-auto px-6 sm:px-10 pt-20 pb-16 sm:pt-28 sm:pb-24 text-center">
+          <section className="max-w-2xl mx-auto px-6 sm:px-10 pt-20 pb-16 sm:pt-28 sm:pb-24 text-center" style={{ paddingTop: '50px' }}>
+            <img
+              src={hogwartsLogo}
+              alt=""
+              aria-hidden="true"
+              className="w-35 h-35 mx-auto mb-5 object-contain"
+              style={{ mixBlendMode: isDark ? 'normal' : 'multiply', opacity: isDark ? 0.6 : 0.8 }}
+            />
             <p
               className="font-cinzel text-[0.78rem] tracking-[0.28em] uppercase mb-8"
               style={{ color: 'var(--accent)' }}
@@ -345,23 +353,8 @@ export default function App() {
               <em style={{ color: 'var(--ink)' }}>Biblioteca Sperelliana, ore 17:00 — Gubbio (PG)</em>
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-14">
-              <PrimaryBtn
-                href="https://wa.me/393319581921?text=Ciao!%20Siamo%20felici%20di%20confermare%20la%20nostra%20presenza%20al%20vostro%20matrimonio."
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Send size={15} />
-                Conferma presenza
-              </PrimaryBtn>
-              <GhostBtn onClick={() => downloadCalendar()}>
-                <Download size={15} />
-                Aggiungi al calendario
-              </GhostBtn>
-            </div>
-
             {/* Countdown */}
-            <div role="timer" aria-label="Tempo rimanente al matrimonio">
+            <div role="timer" aria-label="Tempo rimanente al matrimonio" className="mb-10">
               <p
                 className="font-cinzel text-[0.78rem] tracking-[0.22em] uppercase mb-3"
                 style={{ color: 'var(--ink-muted)' }}
@@ -396,6 +389,13 @@ export default function App() {
                 />
                 <span className="font-cinzel text-sm" style={{ color: 'var(--ink-muted)' }}>min</span>
               </div>
+            </div>
+
+            <div className="flex justify-center">
+              <GhostBtn onClick={() => downloadCalendar()}>
+                <Download size={15} />
+                Aggiungi al calendario
+              </GhostBtn>
             </div>
           </section>
 
@@ -488,29 +488,6 @@ export default function App() {
               <Train size={14} />
               Vedi il biglietto
             </GhostBtn>
-            <div className="mt-5 p-5 rounded-[2px] parchment-card">
-              <p
-                className="font-cinzel text-[0.78rem] tracking-[0.18em] uppercase mb-1"
-                style={{ color: 'var(--ink-muted)' }}
-              >
-                IBAN intestato agli sposi
-              </p>
-              <p
-                className="font-cinzel text-lg sm:text-xl mb-4 break-all"
-                style={{ color: 'var(--ink)' }}
-              >
-                IT38 C036 6901 6005 7166 6986 706
-              </p>
-              <button
-                type="button"
-                onClick={copyIban}
-                className={`${btnBase}`}
-                style={{ background: 'var(--accent)', color: 'var(--accent-on)' }}
-              >
-                {copiedIban ? <Check size={14} /> : <Copy size={14} />}
-                {copiedIban ? 'Copiato' : 'Copia IBAN'}
-              </button>
-            </div>
           </Section>
 
           <Rule />
@@ -537,13 +514,6 @@ export default function App() {
           className="border-t text-center py-16 px-6"
           style={{ borderColor: 'var(--rule)' }}
         >
-          <img
-            src={hogwartsLogo}
-            alt=""
-            aria-hidden="true"
-            className="w-14 h-14 mx-auto mb-5 object-contain"
-            style={{ mixBlendMode: isDark ? 'normal' : 'multiply', opacity: isDark ? 0.6 : 0.8 }}
-          />
           <p className="font-script text-3xl mb-1" style={{ color: 'var(--ink)' }}>
             Nicolas <span style={{ color: 'var(--gold)' }}>&amp;</span> Giulia
           </p>
@@ -560,6 +530,7 @@ export default function App() {
             «Vi aspettiamo. Il gufo è già in volo.»
           </p>
         </footer>
+        </div>
 
         {/* ── Photo album overlay ───────────────────────────────────── */}
         <AnimatePresence>
