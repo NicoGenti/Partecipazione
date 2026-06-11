@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect, type MouseEvent, type ReactNode } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { Send, Volume2, VolumeX, X, Copy, Check, Camera, Moon, Sun, Download, MapPin, Train } from 'lucide-react';
+import EnvelopeIntro from './EnvelopeIntro';
 import PhotoAlbum from './PhotoAlbum';
 import { buildBlobUrl } from './azure';
 import { AnimateNumber } from '@/src/components/ui/animated-blur-number';
 import themeSong from '../assets/harry_potter_theme.mp3';
 
-const hogwartsLogo  = buildBlobUrl('static/Hogwarts_logo.jpg');
-const ticketImage   = buildBlobUrl('static/BigliettoInternoPartecipazione.jpeg');
+const hogwartsLogo   = buildBlobUrl('static/Hogwarts_logo.jpg');
+const ticketImage    = buildBlobUrl('static/BigliettoInternoPartecipazione.jpeg');
 const dumbledoreSign = buildBlobUrl('static/albus-dumbledore-sign.jpg');
 
 function downloadCalendar() {
@@ -56,18 +57,29 @@ function Section({ number, id, title, children, delay = 0 }: SectionProps) {
       className="max-w-2xl mx-auto px-6 sm:px-10 py-14 sm:py-20 flex gap-5 sm:gap-8 items-start"
     >
       <div
-        className="shrink-0 mt-1 w-10 h-10 sm:w-11 sm:h-11 rounded-full border font-display italic font-light text-lg flex items-center justify-center"
-        style={{ borderColor: 'var(--rule)', color: 'var(--accent)' }}
+        className="shrink-0 mt-1 w-10 h-10 sm:w-11 sm:h-11 rounded-full wax-badge font-cinzel text-base grid place-items-center -rotate-3 select-none"
         aria-hidden="true"
       >
         {number}
       </div>
       <div className="flex-1 min-w-0">
         <h2
-          className="font-display font-medium leading-tight mb-5"
-          style={{ fontSize: 'clamp(1.65rem, 5vw, 2.25rem)', color: 'var(--ink)' }}
+          className="font-cinzel font-semibold leading-tight mb-5 flex items-center gap-3"
+          style={{ fontSize: 'clamp(1.35rem, 4.5vw, 1.85rem)', color: 'var(--ink)' }}
         >
           {title}
+          {!reduced && (
+            <motion.span
+              initial={{ opacity: 0, scale: 0.5 }}
+              whileInView={{ opacity: 0.7, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.3, delay: delay + 0.2 }}
+              aria-hidden="true"
+              style={{ color: 'var(--gold)', fontSize: '0.6em' }}
+            >
+              ✦
+            </motion.span>
+          )}
         </h2>
         {children}
       </div>
@@ -75,22 +87,20 @@ function Section({ number, id, title, children, delay = 0 }: SectionProps) {
   );
 }
 
-/* ── Divider ────────────────────────────────────────────────────── */
+/* ── Gold divider ───────────────────────────────────────────────── */
 
 function Rule() {
   return (
-    <hr
-      className="max-w-2xl mx-auto mx-6 sm:mx-10 border-0 border-t"
-      style={{ borderColor: 'var(--rule)' }}
-      aria-hidden="true"
-    />
+    <div className="max-w-2xl mx-auto px-6 sm:px-10" aria-hidden="true">
+      <div className="gold-rule" />
+    </div>
   );
 }
 
 /* ── Button primitives ──────────────────────────────────────────── */
 
 const btnBase =
-  'inline-flex items-center gap-2 px-6 py-3 rounded-[2px] text-[0.88rem] tracking-[0.1em] uppercase transition-all active:translate-y-px font-garamond';
+  'inline-flex items-center gap-2 px-6 py-3 rounded-[2px] text-[0.88rem] tracking-[0.1em] uppercase transition-all active:translate-y-px font-cinzel';
 
 function PrimaryBtn({ onClick, href, target, rel, children }: {
   onClick?: (e: MouseEvent<HTMLButtonElement | HTMLAnchorElement>) => void;
@@ -117,7 +127,7 @@ function GhostBtn({ onClick, href, target, rel, children }: {
   onClick?: (e: MouseEvent<HTMLButtonElement | HTMLAnchorElement>) => void;
   href?: string; target?: string; rel?: string; children: ReactNode;
 }) {
-  const style = { borderColor: 'var(--rule)', color: 'var(--ink)' };
+  const style = { borderColor: 'color-mix(in srgb, var(--gold) 55%, transparent)', color: 'var(--ink)' };
   if (href) {
     return (
       <a href={href} target={target} rel={rel} className={`${btnBase} border`} style={style}
@@ -144,11 +154,26 @@ export default function App() {
   const [showAlbum, setShowAlbum]   = useState(false);
   const [copiedIban, setCopiedIban] = useState(false);
   const [isDark, setIsDark] = useState(false);
+  const [introDone, setIntroDone] = useState(false);
 
-  // Sync isDark state with the data-theme already set by the inline script in index.html.
   useEffect(() => {
     setIsDark(document.documentElement.dataset.theme === 'dark');
   }, []);
+
+  // Scroll lock while intro is showing
+  useEffect(() => {
+    document.body.style.overflow = introDone ? '' : 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, [introDone]);
+
+  const startAudio = () => {
+    if (audioRef.current && !hasStartedSong) {
+      audioRef.current.volume = 0.4;
+      audioRef.current.play().catch(() => {});
+      setHasStartedSong(true);
+      setIsAudioMuted(false);
+    }
+  };
 
   const toggleTheme = () => {
     const next = !isDark;
@@ -184,17 +209,24 @@ export default function App() {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
-  const timeLeft = Math.max(0, WEDDING - now);
+  const timeLeft    = Math.max(0, WEDDING - now);
   const daysLeft    = Math.floor(timeLeft / 86_400_000);
   const hoursLeft   = Math.floor((timeLeft % 86_400_000) / 3_600_000);
   const minutesLeft = Math.floor((timeLeft % 3_600_000) / 60_000);
 
   return (
     <div
-      className="min-h-screen font-garamond"
+      className="min-h-screen font-body"
       style={{ background: 'var(--bg)', color: 'var(--ink)' }}
     >
       <audio ref={audioRef} src={themeSong} loop />
+
+      {/* Envelope intro gate */}
+      <AnimatePresence>
+        {!introDone && (
+          <EnvelopeIntro onOpen={startAudio} onFinish={() => setIntroDone(true)} />
+        )}
+      </AnimatePresence>
 
       {/* Subtle grain texture */}
       <div
@@ -205,407 +237,403 @@ export default function App() {
         }}
       />
 
-      {/* Skip link */}
-      <a
-        href="#contenuto"
-        className="fixed -top-14 left-4 focus:top-3 z-[200] px-4 py-2 text-sm transition-[top] duration-200 rounded-[2px]"
-        style={{ background: 'var(--accent)', color: 'var(--accent-on)' }}
+      {/* Page content — fades in after intro */}
+      <motion.div
+        animate={{ opacity: introDone ? 1 : 0, y: introDone ? 0 : 24 }}
+        transition={{ duration: 0.7, ease: 'easeOut' }}
+        inert={!introDone || undefined}
       >
-        Vai al contenuto
-      </a>
-
-      {/* ── Header ─────────────────────────────────────────────── */}
-      <header
-        className="sticky top-0 z-50 flex items-center gap-3 px-6 sm:px-10 h-[3.75rem] border-b"
-        style={{
-          background: 'color-mix(in srgb, var(--bg) 86%, transparent)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          borderColor: 'var(--rule)',
-        }}
-      >
+        {/* Skip link */}
         <a
-          href="#"
-          className="font-display font-semibold text-[1.05rem] tracking-wide mr-auto"
-          style={{ color: 'var(--ink)' }}
-          aria-label="Torna all'inizio"
+          href="#contenuto"
+          className="fixed -top-14 left-4 focus:top-3 z-[200] px-4 py-2 text-sm transition-[top] duration-200 rounded-[2px] font-cinzel"
+          style={{ background: 'var(--accent)', color: 'var(--accent-on)' }}
         >
-          N<span style={{ color: 'var(--accent)' }}>·</span>G
+          Vai al contenuto
         </a>
 
-        <nav aria-label="Sezioni della pagina" className="hidden sm:flex items-center gap-5">
-          {[
-            { id: 'cerimonia', label: 'Cerimonia' },
-            { id: 'rsvp',      label: 'RSVP' },
-            { id: 'regalo',    label: 'Regalo' },
-            { id: 'album',     label: 'Album' },
-          ].map(({ id, label }) => (
-            <a
-              key={id}
-              href={`#${id}`}
-              className="text-[0.8rem] tracking-[0.14em] uppercase transition-colors hover:opacity-100"
-              style={{ color: 'var(--ink-muted)' }}
-            >
-              {label}
-            </a>
-          ))}
-        </nav>
-
-        {/* Audio toggle */}
-        <button
-          type="button"
-          onClick={toggleAudio}
-          className="w-9 h-9 rounded-full border grid place-items-center transition-colors"
-          style={{ borderColor: 'var(--rule)', color: 'var(--ink-muted)' }}
-          aria-label={!hasStartedSong ? 'Avvia musica' : isAudioMuted ? 'Riattiva musica' : 'Silenzia musica'}
+        {/* ── Header ─────────────────────────────────────────────── */}
+        <header
+          className="sticky top-0 z-50 flex items-center gap-3 px-6 sm:px-10 h-[3.75rem] border-b"
+          style={{
+            background: 'color-mix(in srgb, var(--bg) 86%, transparent)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            borderColor: 'var(--rule)',
+          }}
         >
-          {(!hasStartedSong || isAudioMuted) ? <VolumeX size={15} /> : <Volume2 size={15} />}
-        </button>
-
-        {/* Theme toggle */}
-        <button
-          type="button"
-          onClick={toggleTheme}
-          className="w-9 h-9 rounded-full border grid place-items-center transition-colors"
-          style={{ borderColor: 'var(--rule)', color: 'var(--ink-muted)' }}
-          aria-label={isDark ? 'Passa al tema chiaro' : 'Passa al tema scuro'}
-          aria-pressed={isDark}
-        >
-          {isDark ? <Sun size={15} /> : <Moon size={15} />}
-        </button>
-      </header>
-
-      <main id="contenuto">
-
-        {/* ── Hero ─────────────────────────────────────────────── */}
-        <motion.section
-          className="max-w-2xl mx-auto px-6 sm:px-10 pt-20 pb-16 sm:pt-28 sm:pb-24 text-center"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8 }}
-        >
-          <p
-            className="text-[0.8rem] tracking-[0.28em] uppercase mb-8"
-            style={{ color: 'var(--accent)' }}
+          <a
+            href="#"
+            className="font-cinzel font-semibold text-[1.05rem] tracking-wide mr-auto"
+            style={{ color: 'var(--ink)' }}
+            aria-label="Torna all'inizio"
           >
-            Sabato 12 settembre 2026 · Gubbio
-          </p>
+            N<span style={{ color: 'var(--gold)' }}>·</span>G
+          </a>
 
-          <h1
-            className="font-display font-normal leading-[1.02] tracking-[-0.01em] mb-7"
-            style={{ fontSize: 'clamp(3.5rem, 14vw, 6.5rem)', color: 'var(--ink)' }}
+          <nav aria-label="Sezioni della pagina" className="hidden sm:flex items-center gap-5">
+            {[
+              { id: 'cerimonia', label: 'Cerimonia' },
+              { id: 'rsvp',      label: 'RSVP' },
+              { id: 'regalo',    label: 'Regalo' },
+              { id: 'album',     label: 'Album' },
+            ].map(({ id, label }) => (
+              <a
+                key={id}
+                href={`#${id}`}
+                className="font-cinzel text-[0.78rem] tracking-[0.14em] uppercase transition-colors hover:opacity-100"
+                style={{ color: 'var(--ink-muted)' }}
+              >
+                {label}
+              </a>
+            ))}
+          </nav>
+
+          {/* Audio toggle */}
+          <button
+            type="button"
+            onClick={toggleAudio}
+            className="w-9 h-9 rounded-full border grid place-items-center transition-colors"
+            style={{ borderColor: 'var(--rule)', color: 'var(--ink-muted)' }}
+            aria-label={!hasStartedSong ? 'Avvia musica' : isAudioMuted ? 'Riattiva musica' : 'Silenzia musica'}
           >
-            <span className="block">Nicolas</span>
-            <span
-              className="block font-light italic"
-              style={{ fontSize: '0.4em', color: 'var(--accent)', margin: '0.35em 0' }}
-              aria-hidden="true"
-            >
-              &amp;
-            </span>
-            <span className="block">Giulia</span>
-          </h1>
+            {(!hasStartedSong || isAudioMuted) ? <VolumeX size={15} /> : <Volume2 size={15} />}
+          </button>
 
-          <p className="mb-10 text-lg leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
-            Abbiamo il piacere di invitarvi al nostro matrimonio.{' '}
-            <br className="hidden sm:block" />
-            <em style={{ color: 'var(--ink)' }}>Biblioteca Sperelliana, ore 17:00 — Gubbio (PG)</em>
-          </p>
+          {/* Theme toggle */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="w-9 h-9 rounded-full border grid place-items-center transition-colors"
+            style={{ borderColor: 'var(--rule)', color: 'var(--ink-muted)' }}
+            aria-label={isDark ? 'Passa al tema chiaro' : 'Passa al tema scuro'}
+            aria-pressed={isDark}
+          >
+            {isDark ? <Sun size={15} /> : <Moon size={15} />}
+          </button>
+        </header>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-14">
-            <PrimaryBtn
-              href="https://wa.me/393319581921?text=Ciao!%20Siamo%20felici%20di%20confermare%20la%20nostra%20presenza%20al%20vostro%20matrimonio."
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Send size={15} />
-              Conferma presenza
-            </PrimaryBtn>
-            <GhostBtn onClick={() => downloadCalendar()}>
-              <Download size={15} />
-              Aggiungi al calendario
-            </GhostBtn>
-          </div>
+        <main id="contenuto">
 
-          {/* Countdown */}
-          <div role="timer" aria-label="Tempo rimanente al matrimonio">
+          {/* ── Hero ─────────────────────────────────────────────── */}
+          <section className="max-w-2xl mx-auto px-6 sm:px-10 pt-20 pb-16 sm:pt-28 sm:pb-24 text-center">
             <p
-              className="text-[0.78rem] tracking-[0.22em] uppercase mb-3"
-              style={{ color: 'var(--ink-muted)' }}
+              className="font-cinzel text-[0.78rem] tracking-[0.28em] uppercase mb-8"
+              style={{ color: 'var(--accent)' }}
             >
-              Mancano al fatidico sì
+              Sabato 12 settembre 2026 · Gubbio
             </p>
-            <div className="flex items-baseline justify-center gap-1 sm:gap-2 flex-wrap">
-              <AnimateNumber
-                value={daysLeft}
-                duration={600}
-                blur={16}
-                className="font-display font-light tabular-nums"
-                style={{ fontSize: 'clamp(3rem, 10vw, 5rem)', color: 'var(--accent)' }}
-              />
-              <span className="text-sm mb-1" style={{ color: 'var(--ink-muted)' }}>giorni</span>
-              <span className="mx-1 font-display font-light text-2xl" style={{ color: 'var(--rule)' }}>·</span>
-              <AnimateNumber
-                value={hoursLeft}
-                duration={600}
-                blur={16}
-                className="font-display font-light tabular-nums text-3xl sm:text-4xl"
-                style={{ color: 'var(--ink)' }}
-              />
-              <span className="text-sm" style={{ color: 'var(--ink-muted)' }}>ore</span>
-              <span className="mx-1 font-display font-light text-xl" style={{ color: 'var(--rule)' }}>·</span>
-              <AnimateNumber
-                value={minutesLeft}
-                duration={600}
-                blur={16}
-                className="font-display font-light tabular-nums text-3xl sm:text-4xl"
-                style={{ color: 'var(--ink)' }}
-              />
-              <span className="text-sm" style={{ color: 'var(--ink-muted)' }}>min</span>
+
+            <h1
+              className="font-script font-normal leading-[1.02] mb-7"
+              style={{ fontSize: 'clamp(3.8rem, 15vw, 7rem)', color: 'var(--ink)' }}
+            >
+              <span className="block">Nicolas</span>
+              <span
+                className="block font-script"
+                style={{ fontSize: '0.45em', color: 'var(--gold)', margin: '0.2em 0' }}
+                aria-hidden="true"
+              >
+                &amp;
+              </span>
+              <span className="block">Giulia</span>
+            </h1>
+
+            <p className="font-body mb-10 text-lg leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
+              Abbiamo il piacere di invitarvi al nostro matrimonio.{' '}
+              <br className="hidden sm:block" />
+              <em style={{ color: 'var(--ink)' }}>Biblioteca Sperelliana, ore 17:00 — Gubbio (PG)</em>
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-14">
+              <PrimaryBtn
+                href="https://wa.me/393319581921?text=Ciao!%20Siamo%20felici%20di%20confermare%20la%20nostra%20presenza%20al%20vostro%20matrimonio."
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Send size={15} />
+                Conferma presenza
+              </PrimaryBtn>
+              <GhostBtn onClick={() => downloadCalendar()}>
+                <Download size={15} />
+                Aggiungi al calendario
+              </GhostBtn>
             </div>
-          </div>
-        </motion.section>
 
-        <Rule />
-
-        {/* ── I. La cerimonia ──────────────────────────────────── */}
-        <Section number="I" id="cerimonia" title="La cerimonia">
-          <p className="font-semibold mb-1" style={{ color: 'var(--ink)' }}>
-            Sabato 12 settembre 2026 · ore 17:00
-          </p>
-          <p className="mb-5 leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
-            Biblioteca Sperelliana<br />
-            Complesso Monumentale di San Pietro<br />
-            Via di Fonte Avellana, Gubbio (PG)
-          </p>
-          <a
-            href="https://maps.google.com/?q=Biblioteca+Sperelliana,+Via+di+Fonte+Avellana,+Gubbio+PG"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm border-b pb-0.5 transition-colors"
-            style={{ color: 'var(--accent)', borderColor: 'color-mix(in srgb, var(--accent) 35%, transparent)' }}
-          >
-            <MapPin size={13} />
-            Apri in Google Maps ↗
-          </a>
-        </Section>
-
-        <Rule />
-
-        {/* ── II. Il ricevimento ───────────────────────────────── */}
-        <Section number="II" id="ricevimento" title="Il ricevimento" delay={0.05}>
-          <p className="font-semibold mb-1" style={{ color: 'var(--ink)' }}>
-            A seguire la cerimonia
-          </p>
-          <p className="mb-5 leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
-            Ristorante Villa Monte Granelli<br />
-            Località Spaccio Monteluiviano<br />
-            06024 Gubbio (PG)
-          </p>
-          <a
-            href="https://maps.google.com/?q=Villa+Monte+Granelli,+Gubbio+PG"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm border-b pb-0.5 transition-colors"
-            style={{ color: 'var(--accent)', borderColor: 'color-mix(in srgb, var(--accent) 35%, transparent)' }}
-          >
-            <MapPin size={13} />
-            Apri in Google Maps ↗
-          </a>
-        </Section>
-
-        <Rule />
-
-        {/* ── III. Invia il gufo (RSVP) ────────────────────────── */}
-        <Section number="III" id="rsvp" title="Invia il gufo" delay={0.05}>
-          <p className="mb-6 leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
-            È gradita gentile conferma{' '}
-            <strong style={{ color: 'var(--ink)' }}>entro il 12 agosto 2026</strong>.{' '}
-            Un messaggio su WhatsApp vale quanto un gufo postale — e arriva prima.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <PrimaryBtn
-              href="https://wa.me/393319581921?text=Ciao!%20Siamo%20felici%20di%20confermare%20la%20nostra%20presenza%20al%20vostro%20matrimonio."
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Send size={14} />
-              Nicolas · 331 958 1921
-            </PrimaryBtn>
-            <GhostBtn
-              href="https://wa.me/393662041886?text=Ciao!%20Siamo%20felici%20di%20confermare%20la%20nostra%20presenza%20al%20vostro%20matrimonio."
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Send size={14} />
-              Giulia · 366 204 1886
-            </GhostBtn>
-          </div>
-        </Section>
-
-        <Rule />
-
-        {/* ── IV. Partecipa alla magia (regalo) ───────────────── */}
-        <Section number="IV" id="regalo" title="Partecipa alla magia" delay={0.05}>
-          <p className="mb-6 leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
-            La vostra presenza è il regalo più grande. Se desiderate contribuire
-            al nostro viaggio di nozze, questo è il binario giusto.
-          </p>
-          <GhostBtn onClick={(e) => { e.stopPropagation(); setShowTicket(true); }}>
-            <Train size={14} />
-            Vedi il biglietto
-          </GhostBtn>
-          <div
-            className="mt-5 p-5 rounded-[2px] border"
-            style={{ background: 'var(--surface)', borderColor: 'var(--rule)' }}
-          >
-            <p
-              className="text-[0.78rem] tracking-[0.18em] uppercase mb-1"
-              style={{ color: 'var(--ink-muted)' }}
-            >
-              IBAN intestato agli sposi
-            </p>
-            <p
-              className="font-display text-lg sm:text-xl mb-4 break-all"
-              style={{ color: 'var(--ink)' }}
-            >
-              IT38 C036 6901 6005 7166 6986 706
-            </p>
-            <button
-              type="button"
-              onClick={copyIban}
-              className={`${btnBase}`}
-              style={{
-                background: 'var(--accent)',
-                color: 'var(--accent-on)',
-                transition: 'background 0.2s ease',
-              }}
-            >
-              {copiedIban ? <Check size={14} /> : <Copy size={14} />}
-              {copiedIban ? 'Copiato' : 'Copia IBAN'}
-            </button>
-          </div>
-        </Section>
-
-        <Rule />
-
-        {/* ── V. Album della magia ────────────────────────────── */}
-        <Section number="V" id="album" title="L'album della magia" delay={0.05}>
-          <p className="mb-6 leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
-            Durante e dopo la festa, carica le tue foto nell'album condiviso:
-            i ricordi più belli sono quelli visti con gli occhi di tutti.
-          </p>
-          <PrimaryBtn onClick={(e) => { e.stopPropagation(); setShowAlbum(true); }}>
-            <Camera size={14} />
-            Apri l'album
-          </PrimaryBtn>
-          <p className="mt-3 text-sm italic" style={{ color: 'var(--ink-muted)' }}>
-            Le foto caricate saranno visibili a tutti gli invitati.
-          </p>
-        </Section>
-
-      </main>
-
-      {/* ── Footer ───────────────────────────────────────────────── */}
-      <footer
-        className="border-t text-center py-16 px-6"
-        style={{ borderColor: 'var(--rule)' }}
-      >
-        <img
-          src={hogwartsLogo}
-          alt=""
-          aria-hidden="true"
-          className="w-14 h-14 mx-auto mb-5 object-contain"
-          style={{ mixBlendMode: isDark ? 'normal' : 'multiply', opacity: isDark ? 0.6 : 0.8 }}
-        />
-        <p className="font-display italic font-light text-2xl mb-1" style={{ color: 'var(--ink)' }}>
-          Nicolas <span style={{ color: 'var(--accent)' }}>&amp;</span> Giulia
-        </p>
-        <p className="text-sm tracking-[0.25em]" style={{ color: 'var(--ink-muted)' }}>
-          12 · 09 · 2026 — Gubbio
-        </p>
-        <img
-          src={dumbledoreSign}
-          alt="Firma di Albus Dumbledore"
-          className="w-32 mx-auto mt-6"
-          style={{ mixBlendMode: isDark ? 'screen' : 'multiply', opacity: isDark ? 0.5 : 0.8 }}
-        />
-        <p className="mt-4 text-sm italic" style={{ color: 'var(--ink-muted)' }}>
-          «Vi aspettiamo. Il gufo è già in volo.»
-        </p>
-      </footer>
-
-      {/* ── Photo album overlay ───────────────────────────────────── */}
-      <AnimatePresence>
-        {showAlbum && <PhotoAlbum onClose={() => setShowAlbum(false)} />}
-      </AnimatePresence>
-
-      {/* ── Ticket / gift modal ───────────────────────────────────── */}
-      <AnimatePresence mode="wait">
-        {showTicket && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-8 overflow-y-auto pt-16 pb-10"
-            style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)' }}
-            onClick={() => setShowTicket(false)}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Biglietto lista nozze"
-          >
-            <motion.div
-              initial={{ scale: 0.96, y: 12 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.96, y: 12 }}
-              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="relative w-full max-w-3xl mx-auto my-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                autoFocus
-                type="button"
-                onClick={() => setShowTicket(false)}
-                className="absolute -top-4 -right-4 w-9 h-9 rounded-full border-2 grid place-items-center z-10 transition-transform hover:scale-110"
-                style={{ background: '#2c1d11', color: '#d6b772', borderColor: '#d6b772' }}
-                aria-label="Chiudi"
+            {/* Countdown */}
+            <div role="timer" aria-label="Tempo rimanente al matrimonio">
+              <p
+                className="font-cinzel text-[0.78rem] tracking-[0.22em] uppercase mb-3"
+                style={{ color: 'var(--ink-muted)' }}
               >
-                <X size={16} />
-              </button>
-
-              <div
-                className="rounded-[2px] overflow-hidden border shadow-[0_20px_50px_rgba(0,0,0,0.6)]"
-                style={{ background: '#fdfaf1', borderColor: 'rgba(44,29,17,0.35)' }}
-              >
-                <img
-                  src={ticketImage}
-                  alt="Biglietto Hogwarts Express con lista nozze"
-                  className="w-full h-auto"
+                Mancano al fatidico sì
+              </p>
+              <div className="flex items-baseline justify-center gap-1 sm:gap-2 flex-wrap">
+                <AnimateNumber
+                  value={daysLeft}
+                  duration={600}
+                  blur={16}
+                  className="font-cinzel font-light tabular-nums"
+                  style={{ fontSize: 'clamp(3rem, 10vw, 5rem)', color: 'var(--accent)' }}
                 />
-                <div
-                  className="p-5 border-t flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-                  style={{ borderColor: 'rgba(44,29,17,0.15)', background: 'rgba(255,255,255,0.5)' }}
-                >
-                  <p className="font-mono text-sm break-all" style={{ color: '#2c1d11' }}>
-                    IBAN: IT38 C036 6901 6005 7166 6986 706
-                  </p>
-                  <button
-                    type="button"
-                    onClick={copyIban}
-                    className={`${btnBase} shrink-0`}
-                    style={{ background: '#1a4a2e', color: '#fdfaf1' }}
-                  >
-                    {copiedIban
-                      ? <Check size={14} style={{ color: '#d4af37' }} />
-                      : <Copy size={14} style={{ color: '#d4af37' }} />}
-                    {copiedIban ? 'Copiato' : 'Copia IBAN'}
-                  </button>
-                </div>
+                <span className="font-cinzel text-sm mb-1" style={{ color: 'var(--ink-muted)' }}>giorni</span>
+                <span className="mx-1 font-cinzel font-light text-2xl" style={{ color: 'var(--rule)' }}>·</span>
+                <AnimateNumber
+                  value={hoursLeft}
+                  duration={600}
+                  blur={16}
+                  className="font-cinzel font-light tabular-nums text-3xl sm:text-4xl"
+                  style={{ color: 'var(--ink)' }}
+                />
+                <span className="font-cinzel text-sm" style={{ color: 'var(--ink-muted)' }}>ore</span>
+                <span className="mx-1 font-cinzel font-light text-xl" style={{ color: 'var(--rule)' }}>·</span>
+                <AnimateNumber
+                  value={minutesLeft}
+                  duration={600}
+                  blur={16}
+                  className="font-cinzel font-light tabular-nums text-3xl sm:text-4xl"
+                  style={{ color: 'var(--ink)' }}
+                />
+                <span className="font-cinzel text-sm" style={{ color: 'var(--ink-muted)' }}>min</span>
               </div>
+            </div>
+          </section>
+
+          <Rule />
+
+          {/* ── I. La cerimonia ──────────────────────────────────── */}
+          <Section number="I" id="cerimonia" title="La cerimonia">
+            <p className="font-semibold mb-1" style={{ color: 'var(--ink)' }}>
+              Sabato 12 settembre 2026 · ore 17:00
+            </p>
+            <p className="mb-5 leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
+              Biblioteca Sperelliana<br />
+              Complesso Monumentale di San Pietro<br />
+              Via di Fonte Avellana, Gubbio (PG)
+            </p>
+            <a
+              href="https://maps.google.com/?q=Biblioteca+Sperelliana,+Via+di+Fonte+Avellana,+Gubbio+PG"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm border-b pb-0.5 transition-colors font-cinzel"
+              style={{ color: 'var(--accent)', borderColor: 'color-mix(in srgb, var(--accent) 35%, transparent)' }}
+            >
+              <MapPin size={13} />
+              Apri in Google Maps ↗
+            </a>
+          </Section>
+
+          <Rule />
+
+          {/* ── II. Il ricevimento ───────────────────────────────── */}
+          <Section number="II" id="ricevimento" title="Il ricevimento" delay={0.05}>
+            <p className="font-semibold mb-1" style={{ color: 'var(--ink)' }}>
+              A seguire la cerimonia
+            </p>
+            <p className="mb-5 leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
+              Ristorante Villa Monte Granelli<br />
+              Località Spaccio Monteluiviano<br />
+              06024 Gubbio (PG)
+            </p>
+            <a
+              href="https://maps.google.com/?q=Villa+Monte+Granelli,+Gubbio+PG"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm border-b pb-0.5 transition-colors font-cinzel"
+              style={{ color: 'var(--accent)', borderColor: 'color-mix(in srgb, var(--accent) 35%, transparent)' }}
+            >
+              <MapPin size={13} />
+              Apri in Google Maps ↗
+            </a>
+          </Section>
+
+          <Rule />
+
+          {/* ── III. Invia il gufo (RSVP) ────────────────────────── */}
+          <Section number="III" id="rsvp" title="Invia il gufo" delay={0.05}>
+            <p className="mb-6 leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
+              È gradita gentile conferma{' '}
+              <strong style={{ color: 'var(--ink)' }}>entro il 12 agosto 2026</strong>.{' '}
+              Un messaggio su WhatsApp vale quanto un gufo postale — e arriva prima.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <PrimaryBtn
+                href="https://wa.me/393319581921?text=Ciao!%20Siamo%20felici%20di%20confermare%20la%20nostra%20presenza%20al%20vostro%20matrimonio."
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Send size={14} />
+                Nicolas · 331 958 1921
+              </PrimaryBtn>
+              <GhostBtn
+                href="https://wa.me/393662041886?text=Ciao!%20Siamo%20felici%20di%20confermare%20la%20nostra%20presenza%20al%20vostro%20matrimonio."
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Send size={14} />
+                Giulia · 366 204 1886
+              </GhostBtn>
+            </div>
+          </Section>
+
+          <Rule />
+
+          {/* ── IV. Partecipa alla magia (regalo) ───────────────── */}
+          <Section number="IV" id="regalo" title="Partecipa alla magia" delay={0.05}>
+            <p className="mb-6 leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
+              La vostra presenza è il regalo più grande. Se desiderate contribuire
+              al nostro viaggio di nozze, questo è il binario giusto.
+            </p>
+            <GhostBtn onClick={(e) => { e.stopPropagation(); setShowTicket(true); }}>
+              <Train size={14} />
+              Vedi il biglietto
+            </GhostBtn>
+            <div className="mt-5 p-5 rounded-[2px] parchment-card">
+              <p
+                className="font-cinzel text-[0.78rem] tracking-[0.18em] uppercase mb-1"
+                style={{ color: 'var(--ink-muted)' }}
+              >
+                IBAN intestato agli sposi
+              </p>
+              <p
+                className="font-cinzel text-lg sm:text-xl mb-4 break-all"
+                style={{ color: 'var(--ink)' }}
+              >
+                IT38 C036 6901 6005 7166 6986 706
+              </p>
+              <button
+                type="button"
+                onClick={copyIban}
+                className={`${btnBase}`}
+                style={{ background: 'var(--accent)', color: 'var(--accent-on)' }}
+              >
+                {copiedIban ? <Check size={14} /> : <Copy size={14} />}
+                {copiedIban ? 'Copiato' : 'Copia IBAN'}
+              </button>
+            </div>
+          </Section>
+
+          <Rule />
+
+          {/* ── V. Album della magia ────────────────────────────── */}
+          <Section number="V" id="album" title="L'album della magia" delay={0.05}>
+            <p className="mb-6 leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
+              Durante e dopo la festa, carica le tue foto nell'album condiviso:
+              i ricordi più belli sono quelli visti con gli occhi di tutti.
+            </p>
+            <PrimaryBtn onClick={(e) => { e.stopPropagation(); setShowAlbum(true); }}>
+              <Camera size={14} />
+              Apri l'album
+            </PrimaryBtn>
+            <p className="mt-3 text-sm italic" style={{ color: 'var(--ink-muted)' }}>
+              Le foto caricate saranno visibili a tutti gli invitati.
+            </p>
+          </Section>
+
+        </main>
+
+        {/* ── Footer ───────────────────────────────────────────────── */}
+        <footer
+          className="border-t text-center py-16 px-6"
+          style={{ borderColor: 'var(--rule)' }}
+        >
+          <img
+            src={hogwartsLogo}
+            alt=""
+            aria-hidden="true"
+            className="w-14 h-14 mx-auto mb-5 object-contain"
+            style={{ mixBlendMode: isDark ? 'normal' : 'multiply', opacity: isDark ? 0.6 : 0.8 }}
+          />
+          <p className="font-script text-3xl mb-1" style={{ color: 'var(--ink)' }}>
+            Nicolas <span style={{ color: 'var(--gold)' }}>&amp;</span> Giulia
+          </p>
+          <p className="font-cinzel text-sm tracking-[0.25em]" style={{ color: 'var(--ink-muted)' }}>
+            12 · 09 · 2026 — Gubbio
+          </p>
+          <img
+            src={dumbledoreSign}
+            alt="Firma di Albus Dumbledore"
+            className="w-32 mx-auto mt-6"
+            style={{ mixBlendMode: isDark ? 'screen' : 'multiply', opacity: isDark ? 0.5 : 0.8 }}
+          />
+          <p className="mt-4 text-sm italic font-body" style={{ color: 'var(--ink-muted)' }}>
+            «Vi aspettiamo. Il gufo è già in volo.»
+          </p>
+        </footer>
+
+        {/* ── Photo album overlay ───────────────────────────────────── */}
+        <AnimatePresence>
+          {showAlbum && <PhotoAlbum onClose={() => setShowAlbum(false)} />}
+        </AnimatePresence>
+
+        {/* ── Ticket / gift modal ───────────────────────────────────── */}
+        <AnimatePresence mode="wait">
+          {showTicket && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-8 overflow-y-auto pt-16 pb-10"
+              style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)' }}
+              onClick={() => setShowTicket(false)}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Biglietto lista nozze"
+            >
+              <motion.div
+                initial={{ scale: 0.96, y: 12 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.96, y: 12 }}
+                transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                className="relative w-full max-w-3xl mx-auto my-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  autoFocus
+                  type="button"
+                  onClick={() => setShowTicket(false)}
+                  className="absolute -top-4 -right-4 w-9 h-9 rounded-full border-2 grid place-items-center z-10 transition-transform hover:scale-110"
+                  style={{ background: '#2c1d11', color: '#d6b772', borderColor: '#d6b772' }}
+                  aria-label="Chiudi"
+                >
+                  <X size={16} />
+                </button>
+
+                <div
+                  className="rounded-[2px] overflow-hidden border shadow-[0_20px_50px_rgba(0,0,0,0.6)]"
+                  style={{ background: '#fdfaf1', borderColor: 'rgba(44,29,17,0.35)' }}
+                >
+                  <img
+                    src={ticketImage}
+                    alt="Biglietto Hogwarts Express con lista nozze"
+                    className="w-full h-auto"
+                  />
+                  <div
+                    className="p-5 border-t flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                    style={{ borderColor: 'rgba(44,29,17,0.15)', background: 'rgba(255,255,255,0.5)' }}
+                  >
+                    <p className="font-mono text-sm break-all" style={{ color: '#2c1d11' }}>
+                      IBAN: IT38 C036 6901 6005 7166 6986 706
+                    </p>
+                    <button
+                      type="button"
+                      onClick={copyIban}
+                      className={`${btnBase} shrink-0`}
+                      style={{ background: '#1a4a2e', color: '#fdfaf1' }}
+                    >
+                      {copiedIban
+                        ? <Check size={14} style={{ color: '#d4af37' }} />
+                        : <Copy size={14} style={{ color: '#d4af37' }} />}
+                      {copiedIban ? 'Copiato' : 'Copia IBAN'}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
+
+      </motion.div>
     </div>
   );
 }

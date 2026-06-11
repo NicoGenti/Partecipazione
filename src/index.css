@@ -1,10 +1,6 @@
 @import "tailwindcss";
 
 @theme {
-  /* Main page: editorial redesign */
-  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
-  --font-garamond: "EB Garamond", Georgia, serif;
-  /* Kept for PhotoAlbum and internal overlays */
   --font-cinzel: "Cinzel", serif;
   --font-script: "Great Vibes", cursive;
   --font-body: "Playfair Display", serif;
@@ -13,26 +9,69 @@
 /* ── Design tokens ─────────────────────────────────────────────── */
 
 :root {
-  --bg: #f5f0e6;
-  --surface: #fbf8f1;
-  --ink: #211d16;
-  --ink-muted: #6e6757;
-  --accent: #1d4a2f;
-  --accent-on: #f5f0e6;
-  --rule: rgba(33, 29, 22, 0.14);
+  --bg: #f3ecda;
+  --surface: #fdfaf1;
+  --ink: #2a2118;
+  --ink-muted: #6b5d48;
+  --accent: #1a4a2e;
+  --accent-on: #fdfaf1;
+  --rule: rgba(168, 132, 44, 0.38);
+  --gold: #a8842c;
+  --wax: #8b1a1a;
+  --wax-deep: #7a1515;
 }
 
 [data-theme="dark"] {
-  --bg: #16140f;
-  --surface: #1d1a14;
-  --ink: #ece5d4;
-  --ink-muted: #a59c89;
-  --accent: #8fbf9e;
-  --accent-on: #12200f;
-  --rule: rgba(236, 229, 212, 0.14);
+  --bg: #0c0d12;
+  --surface: #15171f;
+  --ink: #ece3cd;
+  --ink-muted: #a89c83;
+  --accent: #d4af37;
+  --accent-on: #1c1408;
+  --rule: rgba(212, 175, 55, 0.28);
+  --gold: #d4af37;
+  --wax: #a32222;
+  --wax-deep: #7a1515;
 }
 
-/* ── PhotoAlbum / overlay surfaces (always light/parchment) ───── */
+/* ── Wax seal badge (section numbers I–V) ─────────────────────── */
+
+.wax-badge {
+  background: radial-gradient(circle at 35% 30%, #a32626, var(--wax) 60%, var(--wax-deep));
+  color: #fdfaf1;
+  box-shadow:
+    inset 0 0 8px rgba(0, 0, 0, 0.35),
+    0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Gold rule divider ─────────────────────────────────────────── */
+
+.gold-rule {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold) 35%, var(--gold) 65%, transparent);
+  background-size: 200% 100%;
+  animation: gold-shimmer 6s ease-in-out infinite;
+}
+
+@keyframes gold-shimmer {
+  0%   { background-position: 200% center; }
+  50%  { background-position: 0%   center; }
+  100% { background-position: 200% center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gold-rule { animation: none; }
+}
+
+/* ── Parchment card (lighter than .paper-surface) ─────────────── */
+
+.parchment-card {
+  background-color: var(--surface);
+  background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E");
+  border: 1px solid var(--rule);
+}
+
+/* ── PhotoAlbum / overlay surfaces (always parchment, unchanged) ─ */
 
 .paper-surface {
   background-color: #fdfaf1;
@@ -55,26 +94,20 @@
 .wax-seal {
   background-color: #8b1a1a;
   box-shadow:
-    0 10px 15px -3px rgba(0,0,0,0.5),
-    inset 0 0 10px rgba(0,0,0,0.4);
+    0 10px 15px -3px rgba(0, 0, 0, 0.5),
+    inset 0 0 10px rgba(0, 0, 0, 0.4);
   border: 4px solid #7a1515;
-}
-
-.noise-overlay {
-  background-image: url('data:image/svg+xml,%3Csvg width=%22100%22 height=%22100%22 viewBox=%220 0 100 100%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noise%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.8%22 numOctaves=%224%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%22 height=%22100%22 filter=%22url(%23noise)%22 opacity=%220.1%22/%3E%3C/svg%3E');
-  opacity: 0.3;
-  mix-blend-mode: overlay;
 }
 
 /* ── Scrollbar ──────────────────────────────────────────────────── */
 
 ::-webkit-scrollbar { width: 8px; }
-::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); }
+::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.05); }
 ::-webkit-scrollbar-thumb {
-  background: rgba(26, 74, 46, 0.3);
+  background: rgba(168, 132, 44, 0.35);
   border-radius: 4px;
 }
-::-webkit-scrollbar-thumb:hover { background: rgba(26, 74, 46, 0.5); }
+::-webkit-scrollbar-thumb:hover { background: rgba(168, 132, 44, 0.6); }
 
 /* ── Global base ────────────────────────────────────────────────── */
 
