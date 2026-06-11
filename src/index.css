@@ -1,10 +1,38 @@
 @import "tailwindcss";
 
 @theme {
+  /* Main page: editorial redesign */
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --font-garamond: "EB Garamond", Georgia, serif;
+  /* Kept for PhotoAlbum and internal overlays */
   --font-cinzel: "Cinzel", serif;
   --font-script: "Great Vibes", cursive;
   --font-body: "Playfair Display", serif;
 }
+
+/* ── Design tokens ─────────────────────────────────────────────── */
+
+:root {
+  --bg: #f5f0e6;
+  --surface: #fbf8f1;
+  --ink: #211d16;
+  --ink-muted: #6e6757;
+  --accent: #1d4a2f;
+  --accent-on: #f5f0e6;
+  --rule: rgba(33, 29, 22, 0.14);
+}
+
+[data-theme="dark"] {
+  --bg: #16140f;
+  --surface: #1d1a14;
+  --ink: #ece5d4;
+  --ink-muted: #a59c89;
+  --accent: #8fbf9e;
+  --accent-on: #12200f;
+  --rule: rgba(236, 229, 212, 0.14);
+}
+
+/* ── PhotoAlbum / overlay surfaces (always light/parchment) ───── */
 
 .paper-surface {
   background-color: #fdfaf1;
@@ -38,17 +66,31 @@
   mix-blend-mode: overlay;
 }
 
-/* Custom scrollbar for the letter */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: rgba(0,0,0,0.05);
-}
+/* ── Scrollbar ──────────────────────────────────────────────────── */
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); }
 ::-webkit-scrollbar-thumb {
   background: rgba(26, 74, 46, 0.3);
   border-radius: 4px;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(26, 74, 46, 0.5);
+::-webkit-scrollbar-thumb:hover { background: rgba(26, 74, 46, 0.5); }
+
+/* ── Global base ────────────────────────────────────────────────── */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; scroll-padding-top: 4.5rem; }
+
+body {
+  margin: 0;
+  background-color: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  body { transition: none; }
 }

@@ -1,44 +1,174 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import { useState, useRef, useEffect, type MouseEvent, type KeyboardEvent } from 'react';
+import { useState, useRef, useEffect, type MouseEvent, type ReactNode } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
-import { Sparkles, Send, Volume2, VolumeX, ArrowLeft, Star as StarIcon, Train, X, Copy, Check, Camera } from 'lucide-react';
-import AnimatedShaderBackground from '@/src/components/ui/animated-shader-background';
+import { Send, Volume2, VolumeX, X, Copy, Check, Camera, Moon, Sun, Download, MapPin, Train } from 'lucide-react';
 import PhotoAlbum from './PhotoAlbum';
 import { buildBlobUrl } from './azure';
 import { AnimateNumber } from '@/src/components/ui/animated-blur-number';
-import { GlassButton } from './components/ui/glass-button';
 import themeSong from '../assets/harry_potter_theme.mp3';
 
 const hogwartsLogo  = buildBlobUrl('static/Hogwarts_logo.jpg');
 const ticketImage   = buildBlobUrl('static/BigliettoInternoPartecipazione.jpeg');
 const dumbledoreSign = buildBlobUrl('static/albus-dumbledore-sign.jpg');
 
+function downloadCalendar() {
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Nicolas e Giulia//Matrimonio//IT',
+    'BEGIN:VEVENT',
+    'UID:matrimonio-nicolas-giulia-20260912@nicolasgiulia12settembre26.com',
+    'DTSTAMP:20260101T000000Z',
+    'DTSTART:20260912T150000Z',
+    'DTEND:20260912T230000Z',
+    'SUMMARY:Matrimonio di Nicolas \\& Giulia',
+    'DESCRIPTION:Cerimonia ore 17:00 alla Biblioteca Sperelliana\\, a seguire ricevimento presso Villa Monte Granelli.',
+    'LOCATION:Biblioteca Sperelliana\\, Via di Fonte Avellana\\, Gubbio (PG)',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].join('\r\n');
+  const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'matrimonio-nicolas-giulia.ics';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ── Numbered section layout ──────────────────────────────────── */
+
+interface SectionProps {
+  number: string;
+  id?: string;
+  title: string;
+  children: ReactNode;
+  delay?: number;
+}
+
+function Section({ number, id, title, children, delay = 0 }: SectionProps) {
+  const reduced = useReducedMotion();
+  return (
+    <motion.section
+      id={id}
+      initial={reduced ? false : { opacity: 0, y: 16 }}
+      whileInView={reduced ? {} : { opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-60px' }}
+      transition={{ duration: 0.6, ease: 'easeOut', delay }}
+      className="max-w-2xl mx-auto px-6 sm:px-10 py-14 sm:py-20 flex gap-5 sm:gap-8 items-start"
+    >
+      <div
+        className="shrink-0 mt-1 w-10 h-10 sm:w-11 sm:h-11 rounded-full border font-display italic font-light text-lg flex items-center justify-center"
+        style={{ borderColor: 'var(--rule)', color: 'var(--accent)' }}
+        aria-hidden="true"
+      >
+        {number}
+      </div>
+      <div className="flex-1 min-w-0">
+        <h2
+          className="font-display font-medium leading-tight mb-5"
+          style={{ fontSize: 'clamp(1.65rem, 5vw, 2.25rem)', color: 'var(--ink)' }}
+        >
+          {title}
+        </h2>
+        {children}
+      </div>
+    </motion.section>
+  );
+}
+
+/* ── Divider ────────────────────────────────────────────────────── */
+
+function Rule() {
+  return (
+    <hr
+      className="max-w-2xl mx-auto mx-6 sm:mx-10 border-0 border-t"
+      style={{ borderColor: 'var(--rule)' }}
+      aria-hidden="true"
+    />
+  );
+}
+
+/* ── Button primitives ──────────────────────────────────────────── */
+
+const btnBase =
+  'inline-flex items-center gap-2 px-6 py-3 rounded-[2px] text-[0.88rem] tracking-[0.1em] uppercase transition-all active:translate-y-px font-garamond';
+
+function PrimaryBtn({ onClick, href, target, rel, children }: {
+  onClick?: (e: MouseEvent<HTMLButtonElement | HTMLAnchorElement>) => void;
+  href?: string; target?: string; rel?: string; children: ReactNode;
+}) {
+  const style = { background: 'var(--accent)', color: 'var(--accent-on)' };
+  if (href) {
+    return (
+      <a href={href} target={target} rel={rel} className={btnBase} style={style}
+        onClick={onClick as (e: MouseEvent<HTMLAnchorElement>) => void}>
+        {children}
+      </a>
+    );
+  }
+  return (
+    <button type="button" className={btnBase} style={style}
+      onClick={onClick as (e: MouseEvent<HTMLButtonElement>) => void}>
+      {children}
+    </button>
+  );
+}
+
+function GhostBtn({ onClick, href, target, rel, children }: {
+  onClick?: (e: MouseEvent<HTMLButtonElement | HTMLAnchorElement>) => void;
+  href?: string; target?: string; rel?: string; children: ReactNode;
+}) {
+  const style = { borderColor: 'var(--rule)', color: 'var(--ink)' };
+  if (href) {
+    return (
+      <a href={href} target={target} rel={rel} className={`${btnBase} border`} style={style}
+        onClick={onClick as (e: MouseEvent<HTMLAnchorElement>) => void}>
+        {children}
+      </a>
+    );
+  }
+  return (
+    <button type="button" className={`${btnBase} border`} style={style}
+      onClick={onClick as (e: MouseEvent<HTMLButtonElement>) => void}>
+      {children}
+    </button>
+  );
+}
+
+/* ── Main component ─────────────────────────────────────────────── */
+
 export default function App() {
-  const [stage, setStage] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [hasStartedSong, setHasStartedSong] = useState(false);
   const [showTicket, setShowTicket] = useState(false);
   const [showAlbum, setShowAlbum]   = useState(false);
   const [copiedIban, setCopiedIban] = useState(false);
-  const prefersReducedMotion = useReducedMotion();
-  const ticketButtonRef = useRef<HTMLDivElement>(null);
+  const [isDark, setIsDark] = useState(false);
 
-  const WEDDING = new Date("2026-09-12T17:00:00").getTime();
-  const [now, setNow] = useState(() => Date.now());
+  // Sync isDark state with the data-theme already set by the inline script in index.html.
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
+    setIsDark(document.documentElement.dataset.theme === 'dark');
   }, []);
-  const timeRemaining = Math.max(0, WEDDING - now);
-  const daysLeft = Math.floor(timeRemaining / 86_400_000);
-  const hoursLeft = Math.floor((timeRemaining % 86_400_000) / 3_600_000);
-  const minutesLeft = Math.floor((timeRemaining % 3_600_000) / 60_000);
-  const secondsLeft = Math.floor((timeRemaining % 60_000) / 1_000);
+
+  const toggleTheme = () => {
+    const next = !isDark;
+    document.documentElement.dataset.theme = next ? 'dark' : 'light';
+    localStorage.setItem('ng-theme', next ? 'dark' : 'light');
+    setIsDark(next);
+  };
+
+  const toggleAudio = (e: MouseEvent) => {
+    e.stopPropagation();
+    if (!hasStartedSong && audioRef.current) {
+      audioRef.current.volume = 0.3;
+      audioRef.current.play().catch(() => {});
+      setHasStartedSong(true);
+      setIsAudioMuted(false);
+    } else if (audioRef.current) {
+      audioRef.current.muted = !isAudioMuted;
+      setIsAudioMuted(!isAudioMuted);
+    }
+  };
 
   const copyIban = (e: MouseEvent) => {
     e.stopPropagation();
@@ -47,384 +177,428 @@ export default function App() {
     setTimeout(() => setCopiedIban(false), 2000);
   };
 
-  const handleOpen = () => {
-    if (stage > 0) return;
-
-    if (audioRef.current && !hasStartedSong) {
-      audioRef.current.volume = 0.4;
-      audioRef.current.play().catch(e => console.log('Audio autoplay blocked by browser:', e));
-      setHasStartedSong(true);
-    }
-
-    const delay = prefersReducedMotion ? 0.1 : 1;
-    setStage(1);
-    setTimeout(() => setStage(2), 500 * delay);
-    setTimeout(() => setStage(3), 1300 * delay);
-    setTimeout(() => setStage(4), 2200 * delay);
-  };
-
-  const handleEnvelopeKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      handleOpen();
-    }
-  };
-
-  const toggleMute = (e: MouseEvent) => {
-    e.stopPropagation();
-    if (audioRef.current) {
-      audioRef.current.muted = !isAudioMuted;
-      setIsAudioMuted(!isAudioMuted);
-    }
-  };
-
-  const containerVariants = {
-    hidden: {},
-    visible: {
-      transition: {
-        staggerChildren: prefersReducedMotion ? 0 : 0.04,
-        delayChildren: prefersReducedMotion ? 0 : 0.15,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 12 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.5, ease: 'easeOut' },
-    },
-  };
+  // Countdown
+  const WEDDING = new Date('2026-09-12T17:00:00+02:00').getTime();
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const timeLeft = Math.max(0, WEDDING - now);
+  const daysLeft    = Math.floor(timeLeft / 86_400_000);
+  const hoursLeft   = Math.floor((timeLeft % 86_400_000) / 3_600_000);
+  const minutesLeft = Math.floor((timeLeft % 3_600_000) / 60_000);
 
   return (
-    <div className="min-h-screen bg-[#0c0d12] overflow-hidden flex items-center justify-center font-body text-[#1a1a1a] perspective-[1200px] selection:bg-[#1a4a2e] selection:text-[#fdfaf1]" style={{ background: 'radial-gradient(circle at center, #1a1c25 0%, #0c0d12 100%)' }}>
-
-      {/* Animated shader background */}
-      <AnimatedShaderBackground paused={!!prefersReducedMotion} className="fixed inset-0 z-0 w-full h-full" />
-
-      {/* Audio Element */}
+    <div
+      className="min-h-screen font-garamond"
+      style={{ background: 'var(--bg)', color: 'var(--ink)' }}
+    >
       <audio ref={audioRef} src={themeSong} loop />
 
-      {/* Floating Audio Toggle */}
-      <AnimatePresence>
-        {hasStartedSong && (
-          <motion.button
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            whileTap={{ scale: 0.93 }}
-            className="absolute top-6 right-6 z-[100] p-3 rounded-full bg-[#fdfaf1]/10 text-[#fdfaf1]/60 border border-[#fdfaf1]/20 hover:bg-[#fdfaf1]/20 hover:text-white transition-colors backdrop-blur-sm cursor-pointer"
-            onClick={toggleMute}
-            aria-label={isAudioMuted ? "Riattiva musica" : "Silenzia musica"}
+      {/* Subtle grain texture */}
+      <div
+        className="fixed inset-0 z-0 pointer-events-none"
+        style={{
+          opacity: 0.45,
+          backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E\")",
+        }}
+      />
+
+      {/* Skip link */}
+      <a
+        href="#contenuto"
+        className="fixed -top-14 left-4 focus:top-3 z-[200] px-4 py-2 text-sm transition-[top] duration-200 rounded-[2px]"
+        style={{ background: 'var(--accent)', color: 'var(--accent-on)' }}
+      >
+        Vai al contenuto
+      </a>
+
+      {/* ── Header ─────────────────────────────────────────────── */}
+      <header
+        className="sticky top-0 z-50 flex items-center gap-3 px-6 sm:px-10 h-[3.75rem] border-b"
+        style={{
+          background: 'color-mix(in srgb, var(--bg) 86%, transparent)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          borderColor: 'var(--rule)',
+        }}
+      >
+        <a
+          href="#"
+          className="font-display font-semibold text-[1.05rem] tracking-wide mr-auto"
+          style={{ color: 'var(--ink)' }}
+          aria-label="Torna all'inizio"
+        >
+          N<span style={{ color: 'var(--accent)' }}>·</span>G
+        </a>
+
+        <nav aria-label="Sezioni della pagina" className="hidden sm:flex items-center gap-5">
+          {[
+            { id: 'cerimonia', label: 'Cerimonia' },
+            { id: 'rsvp',      label: 'RSVP' },
+            { id: 'regalo',    label: 'Regalo' },
+            { id: 'album',     label: 'Album' },
+          ].map(({ id, label }) => (
+            <a
+              key={id}
+              href={`#${id}`}
+              className="text-[0.8rem] tracking-[0.14em] uppercase transition-colors hover:opacity-100"
+              style={{ color: 'var(--ink-muted)' }}
+            >
+              {label}
+            </a>
+          ))}
+        </nav>
+
+        {/* Audio toggle */}
+        <button
+          type="button"
+          onClick={toggleAudio}
+          className="w-9 h-9 rounded-full border grid place-items-center transition-colors"
+          style={{ borderColor: 'var(--rule)', color: 'var(--ink-muted)' }}
+          aria-label={!hasStartedSong ? 'Avvia musica' : isAudioMuted ? 'Riattiva musica' : 'Silenzia musica'}
+        >
+          {(!hasStartedSong || isAudioMuted) ? <VolumeX size={15} /> : <Volume2 size={15} />}
+        </button>
+
+        {/* Theme toggle */}
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="w-9 h-9 rounded-full border grid place-items-center transition-colors"
+          style={{ borderColor: 'var(--rule)', color: 'var(--ink-muted)' }}
+          aria-label={isDark ? 'Passa al tema chiaro' : 'Passa al tema scuro'}
+          aria-pressed={isDark}
+        >
+          {isDark ? <Sun size={15} /> : <Moon size={15} />}
+        </button>
+      </header>
+
+      <main id="contenuto">
+
+        {/* ── Hero ─────────────────────────────────────────────── */}
+        <motion.section
+          className="max-w-2xl mx-auto px-6 sm:px-10 pt-20 pb-16 sm:pt-28 sm:pb-24 text-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
+        >
+          <p
+            className="text-[0.8rem] tracking-[0.28em] uppercase mb-8"
+            style={{ color: 'var(--accent)' }}
           >
-            {isAudioMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-          </motion.button>
-        )}
-      </AnimatePresence>
+            Sabato 12 settembre 2026 · Gubbio
+          </p>
 
-      {/* Floating abstract decorative pieces */}
-      <div className="absolute top-10 left-10 w-24 h-48 bg-[#fdfaf1] rounded-sm shadow-2xl opacity-[0.05] rotate-[-15deg] border border-white/10 pointer-events-none"></div>
-      <div className="absolute bottom-20 right-10 w-32 h-20 bg-[#fdfaf1] rounded-sm shadow-2xl opacity-[0.05] rotate-[10deg] border border-white/10 pointer-events-none"></div>
-      <div className="absolute top-20 right-40 flex flex-col gap-8 pointer-events-none hidden md:flex">
-        <div className="w-2 h-16 bg-gradient-to-b from-transparent via-yellow-200/40 to-yellow-500/60 rounded-full blur-[2px]"></div>
-        <div className="w-2 h-24 bg-gradient-to-b from-transparent via-yellow-200/40 to-yellow-500/60 rounded-full blur-[2px] ml-12"></div>
-      </div>
-      <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-[0.03]" style={{ background: 'linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%, #000), linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%, #000)', backgroundSize: '2px 2px' }}></div>
-
-      {/* Mystical particles background (CSS-based) */}
-      <div className="absolute inset-0 opacity-[0.07] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
-
-      <AnimatePresence>
-        {stage < 4 && (
-          <motion.div
-             className="relative w-[340px] h-[240px] sm:w-[480px] sm:h-[320px] cursor-pointer group outline-none focus-visible:ring-2 focus-visible:ring-[#d4af37] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0c0d12] rounded-sm"
-             onClick={handleOpen}
-             onKeyDown={handleEnvelopeKeyDown}
-             role="button"
-             tabIndex={0}
-             initial={{ opacity: 0, scale: 0.8, y: 20 }}
-             animate={{ opacity: 1, scale: 1, y: 0 }}
-             exit={{ opacity: 0, scale: 1.1, filter: 'blur(8px)' }}
-             whileTap={{ scale: 0.97 }}
-             transition={{ duration: prefersReducedMotion ? 0.1 : 0.8, ease: "easeInOut" }}
-             style={{ transformStyle: 'preserve-3d' }}
+          <h1
+            className="font-display font-normal leading-[1.02] tracking-[-0.01em] mb-7"
+            style={{ fontSize: 'clamp(3.5rem, 14vw, 6.5rem)', color: 'var(--ink)' }}
           >
-             {/* Hover instructions */}
-             {stage === 0 && (
-                <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 text-white/70 text-[10px] uppercase tracking-[0.4em] font-light w-max">
-                  Premi per aprire
-                </div>
-             )}
+            <span className="block">Nicolas</span>
+            <span
+              className="block font-light italic"
+              style={{ fontSize: '0.4em', color: 'var(--accent)', margin: '0.35em 0' }}
+              aria-hidden="true"
+            >
+              &amp;
+            </span>
+            <span className="block">Giulia</span>
+          </h1>
 
-             {/* Envelope Back Base */}
-             <div className="absolute inset-0 envelope-surface shadow-[0_50px_100px_-20px_rgba(0,0,0,0.8)] rounded-sm z-10 border-4 border-[#ede4cc]"></div>
+          <p className="mb-10 text-lg leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
+            Abbiamo il piacere di invitarvi al nostro matrimonio.{' '}
+            <br className="hidden sm:block" />
+            <em style={{ color: 'var(--ink)' }}>Biblioteca Sperelliana, ore 17:00 — Gubbio (PG)</em>
+          </p>
 
-             {/* Mini Letter (slides out) */}
-             <motion.div
-                className="absolute left-[5%] right-[5%] top-[5%] bottom-[5%] paper-surface flex flex-col items-center p-4 transition-all"
-                style={{ zIndex: stage >= 3 ? 35 : 20, borderWidth: '2px', borderColor: '#ede4cc' }}
-                initial={{ y: 0 }}
-                animate={{ y: stage >= 3 ? -200 : 0 }}
-                transition={{ type: "spring", damping: 20, stiffness: 100 }}
-             >
-                <img src={hogwartsLogo} alt="Hogwarts" className="w-12 sm:w-16 h-auto mb-2 mt-2 object-contain mix-blend-multiply opacity-80" />
-                <div className="w-[80%] h-[2px] bg-[#1a4a2e]/20 mt-2 mb-2"></div>
-                <div className="w-[60%] h-[2px] bg-[#1a4a2e]/20"></div>
-             </motion.div>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-14">
+            <PrimaryBtn
+              href="https://wa.me/393319581921?text=Ciao!%20Siamo%20felici%20di%20confermare%20la%20nostra%20presenza%20al%20vostro%20matrimonio."
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Send size={15} />
+              Conferma presenza
+            </PrimaryBtn>
+            <GhostBtn onClick={() => downloadCalendar()}>
+              <Download size={15} />
+              Aggiungi al calendario
+            </GhostBtn>
+          </div>
 
-             {/* Left Flap */}
-             <div className="absolute inset-0 z-30 pointer-events-none" style={{ filter: 'drop-shadow(3px 0 4px rgba(0,0,0,0.25))' }}>
-                <div className="absolute inset-0 envelope-surface" style={{ clipPath: 'polygon(0 0, 42% 50%, 0 100%)', borderWidth: '4px', borderColor: 'transparent' }} />
-             </div>
+          {/* Countdown */}
+          <div role="timer" aria-label="Tempo rimanente al matrimonio">
+            <p
+              className="text-[0.78rem] tracking-[0.22em] uppercase mb-3"
+              style={{ color: 'var(--ink-muted)' }}
+            >
+              Mancano al fatidico sì
+            </p>
+            <div className="flex items-baseline justify-center gap-1 sm:gap-2 flex-wrap">
+              <AnimateNumber
+                value={daysLeft}
+                duration={600}
+                blur={16}
+                className="font-display font-light tabular-nums"
+                style={{ fontSize: 'clamp(3rem, 10vw, 5rem)', color: 'var(--accent)' }}
+              />
+              <span className="text-sm mb-1" style={{ color: 'var(--ink-muted)' }}>giorni</span>
+              <span className="mx-1 font-display font-light text-2xl" style={{ color: 'var(--rule)' }}>·</span>
+              <AnimateNumber
+                value={hoursLeft}
+                duration={600}
+                blur={16}
+                className="font-display font-light tabular-nums text-3xl sm:text-4xl"
+                style={{ color: 'var(--ink)' }}
+              />
+              <span className="text-sm" style={{ color: 'var(--ink-muted)' }}>ore</span>
+              <span className="mx-1 font-display font-light text-xl" style={{ color: 'var(--rule)' }}>·</span>
+              <AnimateNumber
+                value={minutesLeft}
+                duration={600}
+                blur={16}
+                className="font-display font-light tabular-nums text-3xl sm:text-4xl"
+                style={{ color: 'var(--ink)' }}
+              />
+              <span className="text-sm" style={{ color: 'var(--ink-muted)' }}>min</span>
+            </div>
+          </div>
+        </motion.section>
 
-             {/* Right Flap */}
-             <div className="absolute inset-0 z-30 pointer-events-none" style={{ filter: 'drop-shadow(-3px 0 4px rgba(0,0,0,0.25))' }}>
-                <div className="absolute inset-0 envelope-surface" style={{ clipPath: 'polygon(100% 0, 58% 50%, 100% 100%)', borderWidth: '4px', borderColor: 'transparent' }} />
-             </div>
+        <Rule />
 
-             {/* Bottom Flap */}
-             <div className="absolute inset-0 z-30 pointer-events-none" style={{ filter: 'drop-shadow(0 -3px 4px rgba(0,0,0,0.2))' }}>
-                <div className="absolute inset-0 envelope-surface" style={{ clipPath: 'polygon(0 100%, 50% 48%, 100% 100%)', borderWidth: '4px', borderColor: 'transparent' }} />
-             </div>
-
-             {/* Top Flap */}
-             <motion.div
-                className="absolute inset-0 z-40 pointer-events-none origin-top"
-                style={{ filter: stage < 2 ? 'drop-shadow(0 4px 6px rgba(0,0,0,0.4))' : 'none' }}
-                initial={{ rotateX: 0 }}
-                animate={{ rotateX: stage >= 2 ? -180 : 0, zIndex: stage >= 2 ? 15 : 40 }}
-                transition={{ type: "spring", damping: 18, stiffness: 120 }}
-             >
-                <div className="absolute inset-0 envelope-surface" style={{ clipPath: 'polygon(0 0, 50% 55%, 100% 0)', borderWidth: '4px', borderColor: 'transparent' }} />
-             </motion.div>
-
-             {/* Wax Seal */}
-             <motion.div
-                className="absolute left-1/2 -translate-x-1/2 top-[52%] -translate-y-1/2 z-50 w-16 h-16 sm:w-20 sm:h-20 wax-seal rounded-full flex flex-col items-center justify-center text-white"
-                initial={{ scale: 1, opacity: 1 }}
-                animate={{ scale: stage >= 1 ? 1.5 : 1, opacity: stage >= 1 ? 0 : 1 }}
-                transition={{ duration: prefersReducedMotion ? 0.05 : 0.4 }}
-             >
-                <div className="absolute inset-0 bg-[#8b1a1a] rounded-full blur-[1px] opacity-50 z-0"></div>
-                {/* Negative margin creates visual bleed effect within seal bounds */}
-                <img src={hogwartsLogo} alt="Sigillo di Hogwarts" className="object-contain mix-blend-multiply opacity-50 saturate-0 z-10 relative w-[60px] h-[60px] mb-[9rem] sm:w-[80px] sm:h-[80px] sm:mb-[12rem] pl-[1px]" />
-             </motion.div>
-
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {stage === 4 && (
-          <motion.div
-             className="absolute inset-0 md:inset-8 lg:inset-y-12 lg:left-1/2 lg:-translate-x-1/2 lg:w-[800px] paper-surface md:rounded-sm overflow-y-auto text-[#1a4a2e] p-8 sm:p-12 md:p-20 z-50 flex flex-col"
-             initial={{ opacity: 0, scale: 0.9, y: 100 }}
-             animate={{ opacity: 1, scale: 1, y: 0 }}
-             transition={{ duration: prefersReducedMotion ? 0.1 : 0.8, type: "spring", bounce: prefersReducedMotion ? 0 : 0.2 }}
+        {/* ── I. La cerimonia ──────────────────────────────────── */}
+        <Section number="I" id="cerimonia" title="La cerimonia">
+          <p className="font-semibold mb-1" style={{ color: 'var(--ink)' }}>
+            Sabato 12 settembre 2026 · ore 17:00
+          </p>
+          <p className="mb-5 leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
+            Biblioteca Sperelliana<br />
+            Complesso Monumentale di San Pietro<br />
+            Via di Fonte Avellana, Gubbio (PG)
+          </p>
+          <a
+            href="https://maps.google.com/?q=Biblioteca+Sperelliana,+Via+di+Fonte+Avellana,+Gubbio+PG"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-sm border-b pb-0.5 transition-colors"
+            style={{ color: 'var(--accent)', borderColor: 'color-mix(in srgb, var(--accent) 35%, transparent)' }}
           >
-             {/* Back Button */}
-             <motion.button
-               onClick={(e) => {
-                 e.stopPropagation();
-                 setStage(0);
-               }}
-               whileHover={{ x: -2 }}
-               className="absolute top-6 left-6 sm:top-10 sm:left-10 flex items-center gap-2 text-[#1a4a2e] hover:text-[#1a4a2e]/70 transition-colors font-cinzel text-xs uppercase tracking-widest z-[100]"
-               aria-label="Torna all'inizio"
-             >
-               <ArrowLeft size={18} />
-               <span className="hidden sm:inline">Indietro</span>
-             </motion.button>
+            <MapPin size={13} />
+            Apri in Google Maps ↗
+          </a>
+        </Section>
 
-             {/* Header */}
-             <motion.div variants={itemVariants} className="flex flex-col items-center mb-12 shrink-0">
-                <img src={hogwartsLogo} alt="Hogwarts Logo" className="w-24 sm:w-32 h-auto mb-6 object-contain mix-blend-multiply" />
-                <div className="text-[#1a4a2e] text-center uppercase tracking-[0.3em] font-bold text-xs sm:text-sm font-cinzel">
-                  <p>Hogwarts School of Witchcraft and Wizardry</p>
-                  <p className="mt-1 opacity-60 text-[10px]">Preside: Albus Dumbledore</p>
-                </div>
-             </motion.div>
+        <Rule />
 
-             {/* Body */}
-             <motion.div variants={containerVariants} initial="hidden" animate="visible" className="font-body text-base sm:text-lg leading-relaxed text-center space-y-6 flex-grow -mt-4">
-                <motion.p variants={itemVariants} className="text-lg">hanno il piacere di invitarvi al loro matrimonio</motion.p>
+        {/* ── II. Il ricevimento ───────────────────────────────── */}
+        <Section number="II" id="ricevimento" title="Il ricevimento" delay={0.05}>
+          <p className="font-semibold mb-1" style={{ color: 'var(--ink)' }}>
+            A seguire la cerimonia
+          </p>
+          <p className="mb-5 leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
+            Ristorante Villa Monte Granelli<br />
+            Località Spaccio Monteluiviano<br />
+            06024 Gubbio (PG)
+          </p>
+          <a
+            href="https://maps.google.com/?q=Villa+Monte+Granelli,+Gubbio+PG"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-sm border-b pb-0.5 transition-colors"
+            style={{ color: 'var(--accent)', borderColor: 'color-mix(in srgb, var(--accent) 35%, transparent)' }}
+          >
+            <MapPin size={13} />
+            Apri in Google Maps ↗
+          </a>
+        </Section>
 
-                <motion.h2 variants={itemVariants} className="font-script text-5xl sm:text-[80px] leading-tight font-bold my-6 text-[#1a4a2e]">
-                  Nicolas Gentilucci<br/>
-                  <span className="text-4xl sm:text-6xl">e</span> Giulia Cro
-                </motion.h2>
+        <Rule />
 
-                <motion.div variants={itemVariants} className="max-w-2xl mx-auto space-y-6 border-y border-[#1a4a2e]/20 py-8">
-                  <div>
-                    <p className="font-body font-bold text-lg">Sabato 12 settembre 2026, ore 17:00</p>
-                    <p className="text-sm mt-1">Biblioteca Sperelliana, Complesso Monumentale di San Pietro,<br/>Via di Fonte Avellana, Gubbio (PG)</p>
-                  </div>
+        {/* ── III. Invia il gufo (RSVP) ────────────────────────── */}
+        <Section number="III" id="rsvp" title="Invia il gufo" delay={0.05}>
+          <p className="mb-6 leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
+            È gradita gentile conferma{' '}
+            <strong style={{ color: 'var(--ink)' }}>entro il 12 agosto 2026</strong>.{' '}
+            Un messaggio su WhatsApp vale quanto un gufo postale — e arriva prima.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <PrimaryBtn
+              href="https://wa.me/393319581921?text=Ciao!%20Siamo%20felici%20di%20confermare%20la%20nostra%20presenza%20al%20vostro%20matrimonio."
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Send size={14} />
+              Nicolas · 331 958 1921
+            </PrimaryBtn>
+            <GhostBtn
+              href="https://wa.me/393662041886?text=Ciao!%20Siamo%20felici%20di%20confermare%20la%20nostra%20presenza%20al%20vostro%20matrimonio."
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Send size={14} />
+              Giulia · 366 204 1886
+            </GhostBtn>
+          </div>
+        </Section>
 
-                  <div className="py-2">
-                    <p className="text-sm text-[#1a4a2e]/90">A seguire, saremo felici di festeggiare con voi presso Ristorante Villa<br/>Monte Granelli, Località Spaccio Monteluiviano, 06024 Gubbio (PG)</p>
-                  </div>
-                </motion.div>
+        <Rule />
 
-                <motion.div variants={itemVariants} className="pt-4 text-sm opacity-90 space-y-1">
-                  <p>È gradita gentile conferma entro il 12/08/2026</p>
-                  <p className="font-bold tracking-wide">331 958 1921 — 366 204 1886</p>
-                </motion.div>
+        {/* ── IV. Partecipa alla magia (regalo) ───────────────── */}
+        <Section number="IV" id="regalo" title="Partecipa alla magia" delay={0.05}>
+          <p className="mb-6 leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
+            La vostra presenza è il regalo più grande. Se desiderate contribuire
+            al nostro viaggio di nozze, questo è il binario giusto.
+          </p>
+          <GhostBtn onClick={(e) => { e.stopPropagation(); setShowTicket(true); }}>
+            <Train size={14} />
+            Vedi il biglietto
+          </GhostBtn>
+          <div
+            className="mt-5 p-5 rounded-[2px] border"
+            style={{ background: 'var(--surface)', borderColor: 'var(--rule)' }}
+          >
+            <p
+              className="text-[0.78rem] tracking-[0.18em] uppercase mb-1"
+              style={{ color: 'var(--ink-muted)' }}
+            >
+              IBAN intestato agli sposi
+            </p>
+            <p
+              className="font-display text-lg sm:text-xl mb-4 break-all"
+              style={{ color: 'var(--ink)' }}
+            >
+              IT38 C036 6901 6005 7166 6986 706
+            </p>
+            <button
+              type="button"
+              onClick={copyIban}
+              className={`${btnBase}`}
+              style={{
+                background: 'var(--accent)',
+                color: 'var(--accent-on)',
+                transition: 'background 0.2s ease',
+              }}
+            >
+              {copiedIban ? <Check size={14} /> : <Copy size={14} />}
+              {copiedIban ? 'Copiato' : 'Copia IBAN'}
+            </button>
+          </div>
+        </Section>
 
-                <motion.div variants={itemVariants} className="flex flex-col items-center gap-2 my-6">
-                  <span className="font-cinzel text-xs tracking-widest text-[#1a4a2e] uppercase opacity-70">
-                    Mancano al matrimonio
-                  </span>
-                  <div className="flex items-baseline gap-2 justify-center flex-wrap">
-                    <div className="flex items-baseline gap-1">
-                      <AnimateNumber
-                        value={daysLeft}
-                        duration={600}
-                        blur={16}
-                        className="font-cinzel text-3xl sm:text-4xl font-bold text-[#d4af37]"
-                      />
-                      <span className="font-cinzel text-xs text-[#1a4a2e] opacity-70">giorni</span>
-                    </div>
-                    <span className="font-cinzel text-[#1a4a2e] opacity-50 text-sm">e</span>
-                    <div className="flex items-baseline gap-1">
-                      <AnimateNumber
-                        value={hoursLeft}
-                        duration={600}
-                        blur={16}
-                        className="font-cinzel text-3xl sm:text-4xl font-bold text-[#d4af37]"
-                      />
-                      <span className="font-cinzel text-xs text-[#1a4a2e] opacity-70">ore</span>
-                    </div>
-                    <span className="font-cinzel text-[#1a4a2e] opacity-50 text-sm">e</span>
-                    <div className="flex items-baseline gap-1">
-                      <AnimateNumber
-                        value={minutesLeft}
-                        duration={600}
-                        blur={16}
-                        className="font-cinzel text-3xl sm:text-4xl font-bold text-[#d4af37]"
-                      />
-                      <span className="font-cinzel text-xs text-[#1a4a2e] opacity-70">minuti</span>
-                    </div>
-                    <span className="font-cinzel text-[#1a4a2e] opacity-50 text-sm">e</span>
-                    <div className="flex items-baseline gap-1">
-                      <AnimateNumber
-                        value={secondsLeft}
-                        duration={600}
-                        blur={16}
-                        className="font-cinzel text-3xl sm:text-4xl font-bold text-[#d4af37]"
-                      />
-                      <span className="font-cinzel text-xs text-[#1a4a2e] opacity-70">secondi</span>
-                    </div>
-                  </div>
-                </motion.div>
-             </motion.div>
+        <Rule />
 
-             {/* Footer */}
-             <motion.div variants={itemVariants} className="mt-12 pt-8 flex flex-col items-center sm:items-start w-full shrink-0">
-                <div className="text-center sm:text-left flex flex-col items-center sm:items-start gap-1">
-                  <img src={dumbledoreSign} alt="Albus Dumbledore Signature" className="w-32 sm:w-40 mix-blend-multiply opacity-80" />
-                  <p className="font-body text-sm opacity-80">Il Direttore Albus Dumbledore</p>
-                </div>
-             </motion.div>
+        {/* ── V. Album della magia ────────────────────────────── */}
+        <Section number="V" id="album" title="L'album della magia" delay={0.05}>
+          <p className="mb-6 leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
+            Durante e dopo la festa, carica le tue foto nell'album condiviso:
+            i ricordi più belli sono quelli visti con gli occhi di tutti.
+          </p>
+          <PrimaryBtn onClick={(e) => { e.stopPropagation(); setShowAlbum(true); }}>
+            <Camera size={14} />
+            Apri l'album
+          </PrimaryBtn>
+          <p className="mt-3 text-sm italic" style={{ color: 'var(--ink-muted)' }}>
+            Le foto caricate saranno visibili a tutti gli invitati.
+          </p>
+        </Section>
 
-             {/* Call to action (RSVP, Gifts & Album) */}
-             <motion.div variants={itemVariants} className="mt-8 md:mt-16 w-full flex flex-col items-center pb-8 shrink-0">
-               <div className="flex flex-col items-stretch gap-3 w-full max-w-[280px]">
-               <GlassButton
-                 tint="crimson"
-                 variant="ghost"
-                 className="w-full"
-                 contentClassName="flex items-center gap-3 font-cinzel tracking-[0.15em] uppercase text-[#8b1a1a] text-sm font-bold"
-                 onClick={(e) => { e.stopPropagation(); setShowTicket(true); }}
-               >
-                 <Train size={18} className="text-[#8b1a1a] shrink-0" />
-                 <span className="text-center leading-tight">Partecipa<br />Alla Magia</span>
-               </GlassButton>
+      </main>
 
-               <GlassButton
-                 tint="emerald"
-                 variant="ghost"
-                 href="https://wa.me/393319581921?text=Ciao!%20Siamo%20felici%20di%20confermare%20la%20nostra%20presenza%20al%20vostro%20matrimonio."
-                 target="_blank"
-                 rel="noopener noreferrer"
-                 className="w-full"
-                 contentClassName="flex items-center gap-3 font-cinzel tracking-[0.15em] uppercase text-[#1a4a2e] text-sm font-bold"
-                 onClick={(e) => e.stopPropagation()}
-               >
-                 <Send size={18} className="text-[#1a4a2e] shrink-0" />
-                 <span className="text-center leading-tight">Invia<br />il Gufo</span>
-               </GlassButton>
+      {/* ── Footer ───────────────────────────────────────────────── */}
+      <footer
+        className="border-t text-center py-16 px-6"
+        style={{ borderColor: 'var(--rule)' }}
+      >
+        <img
+          src={hogwartsLogo}
+          alt=""
+          aria-hidden="true"
+          className="w-14 h-14 mx-auto mb-5 object-contain"
+          style={{ mixBlendMode: isDark ? 'normal' : 'multiply', opacity: isDark ? 0.6 : 0.8 }}
+        />
+        <p className="font-display italic font-light text-2xl mb-1" style={{ color: 'var(--ink)' }}>
+          Nicolas <span style={{ color: 'var(--accent)' }}>&amp;</span> Giulia
+        </p>
+        <p className="text-sm tracking-[0.25em]" style={{ color: 'var(--ink-muted)' }}>
+          12 · 09 · 2026 — Gubbio
+        </p>
+        <img
+          src={dumbledoreSign}
+          alt="Firma di Albus Dumbledore"
+          className="w-32 mx-auto mt-6"
+          style={{ mixBlendMode: isDark ? 'screen' : 'multiply', opacity: isDark ? 0.5 : 0.8 }}
+        />
+        <p className="mt-4 text-sm italic" style={{ color: 'var(--ink-muted)' }}>
+          «Vi aspettiamo. Il gufo è già in volo.»
+        </p>
+      </footer>
 
-               <GlassButton
-                 tint="umber"
-                 variant="ghost"
-                 className="w-full"
-                 contentClassName="flex items-center gap-3 font-cinzel tracking-[0.15em] uppercase text-[#2c1d11] text-sm font-bold"
-                 onClick={(e) => { e.stopPropagation(); setShowAlbum(true); }}
-               >
-                 <Camera size={18} className="text-[#2c1d11] shrink-0" />
-                 <span className="text-center leading-tight">Album<br />della Magia</span>
-               </GlassButton>
-               </div>
-             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
+      {/* ── Photo album overlay ───────────────────────────────────── */}
       <AnimatePresence>
         {showAlbum && <PhotoAlbum onClose={() => setShowAlbum(false)} />}
       </AnimatePresence>
 
+      {/* ── Ticket / gift modal ───────────────────────────────────── */}
       <AnimatePresence mode="wait">
         {showTicket && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-8 bg-black/70 backdrop-blur-sm overflow-y-auto pt-20 pb-10"
-            onClick={(e) => { e.stopPropagation(); setShowTicket(false); }}
+            className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-8 overflow-y-auto pt-16 pb-10"
+            style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)' }}
+            onClick={() => setShowTicket(false)}
             role="dialog"
             aria-modal="true"
+            aria-label="Biglietto lista nozze"
           >
             <motion.div
-              initial={{ scale: 0.95, y: 15, rotateX: 5 }}
-              animate={{ scale: 1, y: 0, rotateX: 0 }}
-              exit={{ scale: 0.95, y: 15, rotateX: -5 }}
-              transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="relative w-full max-w-4xl mx-auto cursor-default perspective-1000 my-auto"
+              initial={{ scale: 0.96, y: 12 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.96, y: 12 }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="relative w-full max-w-3xl mx-auto my-auto"
               onClick={(e) => e.stopPropagation()}
-              ref={ticketButtonRef}
             >
               <button
                 autoFocus
+                type="button"
                 onClick={() => setShowTicket(false)}
-                className="absolute -top-3 -right-3 sm:-top-5 sm:-right-5 bg-[#2c1d11] text-[#d6b772] rounded-full p-2 hover:scale-110 transition-transform z-50 shadow-[0_4px_10px_rgba(0,0,0,0.5)] border-2 border-[#d6b772]"
+                className="absolute -top-4 -right-4 w-9 h-9 rounded-full border-2 grid place-items-center z-10 transition-transform hover:scale-110"
+                style={{ background: '#2c1d11', color: '#d6b772', borderColor: '#d6b772' }}
                 aria-label="Chiudi"
               >
-                <X size={20} className="sm:w-6 sm:h-6" />
+                <X size={16} />
               </button>
-              
-              {/* Hogwarts Express Ticket - Gift Registry */}
-              <div className="w-full relative bg-[#fdfaf1] text-[#2c1d11] p-4 border border-[#2c1d11]/50 rounded-sm shadow-[0_20px_50px_rgba(0,0,0,0.6)] overflow-hidden flex flex-col gap-4"
-                style={{
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.15'/%3E%3C/svg%3E")`
-                }}
+
+              <div
+                className="rounded-[2px] overflow-hidden border shadow-[0_20px_50px_rgba(0,0,0,0.6)]"
+                style={{ background: '#fdfaf1', borderColor: 'rgba(44,29,17,0.35)' }}
               >
-                <img 
-                  src={ticketImage} 
-                  alt="Hogwarts Express Ticket" 
-                  className="w-full h-auto object-contain shadow-sm" 
+                <img
+                  src={ticketImage}
+                  alt="Biglietto Hogwarts Express con lista nozze"
+                  className="w-full h-auto"
                 />
-                
-                <div className="w-full p-4 border border-[#2c1d11]/20 bg-white/50 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-sm">
-                  <div className="text-center sm:text-left w-full flex items-center justify-center sm:justify-start">
-                    <p className="font-mono text-xs sm:text-sm md:text-base border-b border-[#2c1d11]/20 pb-0.5 whitespace-normal break-all">IBAN: IT38 C036 6901 6005 7166 6986 706</p>
-                  </div>
-                  <button 
+                <div
+                  className="p-5 border-t flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                  style={{ borderColor: 'rgba(44,29,17,0.15)', background: 'rgba(255,255,255,0.5)' }}
+                >
+                  <p className="font-mono text-sm break-all" style={{ color: '#2c1d11' }}>
+                    IBAN: IT38 C036 6901 6005 7166 6986 706
+                  </p>
+                  <button
+                    type="button"
                     onClick={copyIban}
-                    className="flex items-center justify-center gap-2 px-6 py-3 bg-[#1a4a2e] text-[#fdfaf1] hover:bg-[#133823] transition-colors rounded-sm uppercase tracking-wider text-xs sm:text-sm font-cinzel shrink-0 w-full sm:w-auto"
+                    className={`${btnBase} shrink-0`}
+                    style={{ background: '#1a4a2e', color: '#fdfaf1' }}
                   >
-                    {copiedIban ? <Check size={18} className="text-[#d4af37]" /> : <Copy size={18} className="text-[#d4af37]" />}
-                    <span>{copiedIban ? 'Copiato' : 'Copia IBAN'}</span>
+                    {copiedIban
+                      ? <Check size={14} style={{ color: '#d4af37' }} />
+                      : <Copy size={14} style={{ color: '#d4af37' }} />}
+                    {copiedIban ? 'Copiato' : 'Copia IBAN'}
                   </button>
                 </div>
               </div>
