@@ -219,7 +219,7 @@ export default function App() {
       className="min-h-screen font-body"
       style={{ background: 'var(--bg)', color: 'var(--ink)' }}
     >
-      <audio ref={audioRef} src={themeSong} loop />
+      <audio ref={audioRef} src={themeSong} />
 
       {/* Envelope intro gate */}
       <AnimatePresence>
