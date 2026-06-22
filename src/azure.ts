@@ -1,6 +1,7 @@
 const ACCOUNT_URL = import.meta.env.VITE_AZURE_ACCOUNT_URL;
 const CONTAINER   = import.meta.env.VITE_AZURE_CONTAINER;
 const RAW_SAS     = import.meta.env.VITE_AZURE_SAS;
+import type { RsvpRecord } from './rsvp';
 
 const SAS = RAW_SAS?.startsWith('?') ? RAW_SAS.slice(1) : RAW_SAS;
 
@@ -91,4 +92,17 @@ export async function saveConsent(record: object): Promise<void> {
   });
 
   if (!res.ok) throw new Error(`Consent save failed: ${res.status}`);
+}
+
+export async function saveRsvp(record: RsvpRecord): Promise<void> {
+  const url = buildBlobUrl(`rsvp/${record.deviceId}.json`);
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      'x-ms-blob-type': 'BlockBlob',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(record, null, 2),
+  });
+  if (!res.ok) throw new Error(`RSVP save failed: ${res.status}`);
 }

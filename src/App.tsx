@@ -3,8 +3,10 @@ import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { Send, Volume2, VolumeX, X, Copy, Check, Camera, Moon, Sun, Download, MapPin, Train } from 'lucide-react';
 import EnvelopeIntro from './EnvelopeIntro';
 import PhotoAlbum from './PhotoAlbum';
+import RsvpModal from './RsvpModal';
 import { buildBlobUrl } from './azure';
 import { AnimateNumber } from '@/src/components/ui/animated-blur-number';
+import type { Recipient } from './rsvp';
 import themeSong from '../assets/harry_potter_theme.mp3';
 
 const hogwartsLogo   = buildBlobUrl('static/Hogwarts_logo.jpg');
@@ -155,6 +157,7 @@ export default function App() {
   const [copiedIban, setCopiedIban] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const [introDone, setIntroDone] = useState(false);
+  const [rsvpRecipient, setRsvpRecipient] = useState<Recipient | null>(null);
 
   useEffect(() => {
     setIsDark(document.documentElement.dataset.theme === 'dark');
@@ -457,19 +460,11 @@ export default function App() {
               Un messaggio su WhatsApp vale quanto un gufo postale — e arriva prima.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
-              <PrimaryBtn
-                href="https://wa.me/393319581921?text=Ciao!%20Siamo%20felici%20di%20confermare%20la%20nostra%20presenza%20al%20vostro%20matrimonio."
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              <PrimaryBtn onClick={() => setRsvpRecipient('nicolas')}>
                 <Send size={14} />
                 Nicolas · 331 958 1921
               </PrimaryBtn>
-              <GhostBtn
-                href="https://wa.me/393662041886?text=Ciao!%20Siamo%20felici%20di%20confermare%20la%20nostra%20presenza%20al%20vostro%20matrimonio."
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              <GhostBtn onClick={() => setRsvpRecipient('giulia')}>
                 <Send size={14} />
                 Giulia · 366 204 1886
               </GhostBtn>
@@ -601,6 +596,16 @@ export default function App() {
                 </div>
               </motion.div>
             </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── RSVP modal ────────────────────────────────────────────── */}
+        <AnimatePresence>
+          {rsvpRecipient && (
+            <RsvpModal
+              recipient={rsvpRecipient}
+              onClose={() => setRsvpRecipient(null)}
+            />
           )}
         </AnimatePresence>
 
