@@ -1,0 +1,24 @@
+{
+  "name": "partecipazione-function",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Azure Function: RSVP dashboard read-only endpoint for Partecipazione",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "func start",
+    "azure:deploy": "func azure functionapp publish --name"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.0.0",
+    "@azure/storage-blob": "^12.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "typescript": "~5.8.2"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "dist/RsvpDashboard/index.js"
+}

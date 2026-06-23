@@ -17,9 +17,6 @@ export interface RsvpRecord {
   childrenCount: number;
   intolerances: Intolerance[];
   intolerancesOther: string;
-  needsRoom: boolean;
-  roomGuests: number;
-  roomLocation: 'Villa Montegranelli';
   submittedAt: string;
 }
 
@@ -49,7 +46,7 @@ export const INTOLERANCE_OPTIONS: { value: Intolerance; label: string }[] = [
 export function validateRsvp(
   d: Omit<
     RsvpRecord,
-    'deviceId' | 'submittedAt' | 'roomLocation'
+    'deviceId' | 'submittedAt'
   >,
 ): Partial<Record<keyof RsvpRecord, string>> {
   const e: Partial<Record<keyof RsvpRecord, string>> = {};
@@ -77,13 +74,6 @@ export function validateRsvp(
       e.intolerancesOther = 'Specifica l\'intolleranza o la preferenza';
     } else if (d.intolerancesOther.length > 120) {
       e.intolerancesOther = 'Massimo 120 caratteri';
-    }
-  }
-
-  if (d.needsRoom) {
-    const g = Number(d.roomGuests);
-    if (!Number.isInteger(g) || g < 1 || g > 10) {
-      e.roomGuests = 'Da 1 a 10 ospiti';
     }
   }
 

@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, type MouseEvent, type ReactNode } from 'react';
+import { useState, useRef, useEffect, lazy, Suspense, type MouseEvent, type ReactNode } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
-import { Send, Volume2, VolumeX, X, Copy, Check, Camera, Moon, Sun, Download, MapPin, Train } from 'lucide-react';
+import { Send, Volume2, VolumeX, X, Copy, Check, Camera, Moon, Sun, Download, MapPin, Train, Loader2 } from 'lucide-react';
 import EnvelopeIntro from './EnvelopeIntro';
 import PhotoAlbum from './PhotoAlbum';
 import RsvpModal from './RsvpModal';
@@ -8,6 +8,9 @@ import { buildBlobUrl } from './azure';
 import { AnimateNumber } from '@/src/components/ui/animated-blur-number';
 import type { Recipient } from './rsvp';
 import themeSong from '../assets/harry_potter_theme.mp3';
+
+// Route #admin caricata in lazy: bundle invito resta leggero.
+const Dashboard = lazy(() => import('./dashboard/Dashboard'));
 
 const hogwartsLogo   = buildBlobUrl('static/Hogwarts_logo.jpg');
 const ticketImage    = buildBlobUrl('static/BigliettoInternoPartecipazione.jpeg');
@@ -150,6 +153,20 @@ function GhostBtn({ onClick, href, target, rel, children }: {
 
 export default function App() {
   const audioRef = useRef<HTMLAudioElement>(null);
+
+  const [adminRoute, setAdminRoute] = useState<boolean>(
+    () => window.location.hash.toLowerCase() === '#admin',
+  );
+  useEffect(() => {
+    const handler = () => {
+      const isAdmin = window.location.hash.toLowerCase() === '#admin';
+      setAdminRoute(isAdmin);
+      if (isAdmin) window.scrollTo(0, 0);
+    };
+    window.addEventListener('hashchange', handler);
+    return () => window.removeEventListener('hashchange', handler);
+  }, []);
+
   const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [hasStartedSong, setHasStartedSong] = useState(false);
   const [showTicket, setShowTicket] = useState(false);
@@ -158,6 +175,23 @@ export default function App() {
   const [isDark, setIsDark] = useState(false);
   const [introDone, setIntroDone] = useState(false);
   const [rsvpRecipient, setRsvpRecipient] = useState<Recipient | null>(null);
+
+  if (adminRoute) {
+    const exitAdmin = () => {
+      window.location.hash = '';
+    };
+    return (
+      <Suspense
+        fallback={
+          <div className="min-h-screen flex items-center justify-center" style={{ background: '#0c0d12' }}>
+            <Loader2 size={28} className="text-[#d4af37] animate-spin" />
+          </div>
+        }
+      >
+        <Dashboard onExit={exitAdmin} />
+      </Suspense>
+    );
+  }
 
   useEffect(() => {
     setIsDark(document.documentElement.dataset.theme === 'dark');

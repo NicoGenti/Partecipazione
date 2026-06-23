@@ -1,0 +1,12 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "STORAGE_ACCOUNT_URL": "",
+    "RSVP_CONTAINER_NAME": "",
+    "ADMIN_KEY": "SOSTITUISCI_CON_LA_TUA_PASSHRASE_LUNGA",
+    "RSVP_READ_SAS": "",
+    "CORS_ORIGINS": "http://localhost:3000,https://nicogenti.github.io"
+  }
+}

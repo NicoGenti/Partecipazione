@@ -37,8 +37,6 @@ export default function RsvpModal({ recipient, onClose }: Props) {
   const [childrenCount, setChildrenCount] = useState<number>(0);
   const [intolerances, setIntolerances] = useState<Intolerance[]>([]);
   const [intolerancesOther, setIntolerancesOther] = useState('');
-  const [needsRoom, setNeedsRoom] = useState(false);
-  const [roomGuests, setRoomGuests] = useState<number>(0);
 
   const [status, setStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [errors, setErrors] = useState<Partial<Record<keyof RsvpRecord, string>>>({});
@@ -113,8 +111,6 @@ export default function RsvpModal({ recipient, onClose }: Props) {
       childrenCount: bringingChildren ? childrenCount : 0,
       intolerances,
       intolerancesOther: intolerances.includes('other') ? intolerancesOther : '',
-      needsRoom,
-      roomGuests: needsRoom ? roomGuests : 0,
     };
 
     const validationErrors = validateRsvp(draft);
@@ -134,7 +130,6 @@ export default function RsvpModal({ recipient, onClose }: Props) {
       await saveRsvp({
         ...draft,
         deviceId,
-        roomLocation: 'Villa Montegranelli',
         submittedAt: new Date().toISOString(),
       });
       setStatus('success');
@@ -488,107 +483,6 @@ export default function RsvpModal({ recipient, onClose }: Props) {
                             className="mt-1.5 text-xs text-[#8b1a1a] font-body"
                           >
                             {errors.intolerancesOther}
-                          </motion.p>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </fieldset>
-
-            {/* Room */}
-            <fieldset>
-              <legend className="block font-cinzel text-xs uppercase tracking-widest mb-2 text-[#1a4a2e]/70">
-                Necessitate di una camera presso Villa Montegranelli?{' '}
-                <span aria-label="obbligatorio">*</span>
-              </legend>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer group">
-                  <input
-                    type="radio"
-                    name="rsvp-room"
-                    checked={needsRoom}
-                    onChange={() => {
-                      setNeedsRoom(true);
-                      if (roomGuests === 0) setRoomGuests(1);
-                    }}
-                    className="sr-only"
-                  />
-                  <span
-                    className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                      needsRoom
-                        ? 'border-[#1a4a2e]'
-                        : 'border-[#1a4a2e]/40 group-hover:border-[#1a4a2e]/70'
-                    }`}
-                  >
-                    {needsRoom && <span className="w-2 h-2 rounded-full bg-[#1a4a2e]" />}
-                  </span>
-                  <span className="font-body text-sm text-[#1a4a2e]/80">Sì</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer group">
-                  <input
-                    type="radio"
-                    name="rsvp-room"
-                    checked={!needsRoom}
-                    onChange={() => {
-                      setNeedsRoom(false);
-                      setRoomGuests(0);
-                    }}
-                    className="sr-only"
-                  />
-                  <span
-                    className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                      !needsRoom
-                        ? 'border-[#1a4a2e]'
-                        : 'border-[#1a4a2e]/40 group-hover:border-[#1a4a2e]/70'
-                    }`}
-                  >
-                    {!needsRoom && <span className="w-2 h-2 rounded-full bg-[#1a4a2e]" />}
-                  </span>
-                  <span className="font-body text-sm text-[#1a4a2e]/80">No</span>
-                </label>
-              </div>
-              <AnimatePresence>
-                {needsRoom && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="mt-3">
-                      <label
-                        htmlFor="rsvp-room-guests"
-                        className="block font-cinzel text-xs uppercase tracking-widest mb-2 text-[#1a4a2e]/70"
-                      >
-                        Per quanti ospiti? <span aria-label="obbligatorio">*</span>
-                      </label>
-                      <input
-                        id="rsvp-room-guests"
-                        type="number"
-                        min={1}
-                        max={10}
-                        value={roomGuests}
-                        onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                          setRoomGuests(Number(e.target.value))
-                        }
-                        aria-invalid={!!errors.roomGuests}
-                        aria-describedby={
-                          errors.roomGuests ? 'rsvp-room-guests-error' : undefined
-                        }
-                        className={`${inputClass(!!errors.roomGuests)} max-w-[140px]`}
-                      />
-                      <AnimatePresence>
-                        {errors.roomGuests && (
-                          <motion.p
-                            initial={{ opacity: 0, y: -4 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -4 }}
-                            id="rsvp-room-guests-error"
-                            className="mt-1.5 text-xs text-[#8b1a1a] font-body"
-                          >
-                            {errors.roomGuests}
                           </motion.p>
                         )}
                       </AnimatePresence>

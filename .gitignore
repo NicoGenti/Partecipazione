@@ -1,8 +1,35 @@
+# Dependencies
 node_modules/
 build/
 dist/
 coverage/
-.DS_Store
-*.log
+
+# Environment / secrets
 .env*
 !.env.example
+*.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS junk
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Editors / IDEs
+.vscode/
+.idea/
+
+# AI tooling (local only)
+.omo/
+.codegraph/
+.claude/
+
+# TypeScript build cache
+*.tsbuildinfo
