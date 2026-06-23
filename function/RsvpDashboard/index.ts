@@ -329,13 +329,6 @@ async function RsvpDashboard(
   const origin = req.headers?.['origin'] ?? 'unknown-origin';
   context.log.info(`HTTP trigger RsvpDashboard ricevuto da ${origin}`);
 
-  if (CORS_ORIGINS.length > 0) {
-    const reqOrigin = req.headers?.['origin'] ?? '';
-    if (reqOrigin && !CORS_ORIGINS.includes(reqOrigin)) {
-      return buildResponse(403, { error: 'Origin non autorizzato' });
-    }
-  }
-
   if (!authorized(req)) {
     return buildResponse(401, { error: 'X-Admin-Key mancante o errato' });
   }
