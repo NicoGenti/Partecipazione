@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "private": true,
   "description": "Azure Function: RSVP dashboard read-only endpoint for Partecipazione",
-  "type": "module",
   "scripts": {
     "build": "tsc",
     "start": "func start",
@@ -18,7 +17,7 @@
     "typescript": "~5.8.2"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "main": "dist/RsvpDashboard/index.js"
 }

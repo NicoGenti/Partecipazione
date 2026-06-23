@@ -1,12 +1,33 @@
 import {
-  HttpRequest,
-  HttpResponseInit,
-  InvocationContext,
-} from '@azure/functions';
-import {
   BlobServiceClient,
   StorageSharedKeyCredential,
 } from '@azure/storage-blob';
+
+/* ──────────────────────────────────────────────────────────────
+ * Tipi minimi compatibili col runtime v3 di Azure Functions (Node).
+ * Non importiamo '@azure/functions' per evitare mismatch col modello v4.
+ * ────────────────────────────────────────────────────────────── */
+
+interface V3Context {
+  log: {
+    info: (...args: unknown[]) => void;
+    error: (...args: unknown[]) => void;
+    verbose: (...args: unknown[]) => void;
+  };
+  res?: V3Response;
+}
+
+interface V3Request {
+  method?: string;
+  url?: string;
+  headers?: Record<string, string>;
+}
+
+interface V3Response {
+  status: number;
+  body: unknown;
+  headers: Record<string, string>;
+}
 
 /* ──────────────────────────────────────────────────────────────
  * Contratto condiviso con il frontend — src/dashboard/types.ts.
@@ -14,6 +35,7 @@ import {
  * ────────────────────────────────────────────────────────────── */
 
 export type Recipient = 'nicolas' | 'giulia';
+
 export type Intolerance =
   | 'vegetarian'
   | 'vegan'
@@ -31,6 +53,9 @@ export interface RsvpRecord {
   childrenCount: number;
   intolerances: Intolerance[];
   intolerancesOther: string;
+  needsRoom: boolean;
+  roomGuests: number;
+  roomLocation: 'Villa Montegranelli';
   submittedAt: string;
 }
 
@@ -43,7 +68,7 @@ interface IntolerancesCount {
   other: number;
 }
 
-interface DaylyBucket {
+interface DailyBucket {
   date: string;
   count: number;
 }
@@ -53,25 +78,18 @@ interface DashboardSummary {
   adultsTotal: number;
   childrenTotal: number;
   guestsTotal: number;
+  roomsBooked: number;
+  roomGuestsTotal: number;
   byRecipient: { nicolas: number; giulia: number };
   intolerances: IntolerancesCount;
   intolerancesOther: string[];
-  lastSevenDays: DaylyBucket[];
+  lastSevenDays: DailyBucket[];
 }
 
 interface DashboardReply {
   summary: DashboardSummary;
   rows: RsvpRecord[];
 }
-
-const INTOLERANCE_KEYS: Intolerance[] = [
-  'vegetarian',
-  'vegan',
-  'celiac',
-  'lactose-free',
-  'nut-allergy',
-  'other',
-];
 
 const CORS_ORIGINS = (process.env.CORS_ORIGINS ?? '').split(',')
   .map((s) => s.trim())
@@ -83,11 +101,9 @@ const DAY_IN_MS = 24 * 60 * 60 * 1000;
  * Accesso Storage
  *
  * Due modalità, in ordine di preferenza:
- *   1. Storage account name + key (Managed Identity integrata via
- *      WEBSITE_AUTH (Azure Functions v4)) → StorageSharedKeyCredential.
+ *   1. Storage account name + key (credenziali complete).
  *   2. SAS read-only scoper a 'rsvp/' impostata come app setting
  *      RSVP_READ_SAS (senza punto interrogativo iniziale).
- * La modalità 1 è preferibile: nessun segreto da ruotare.
  * ────────────────────────────────────────────────────────────── */
 
 function buildBlobServiceClient(): BlobServiceClient {
@@ -121,15 +137,13 @@ function buildBlobServiceClient(): BlobServiceClient {
 /* ──────────────────────────────────────────────────────────────
  * Autorizzazione
  *
- * Il client DEVE inviare l'header 'X-Admin-Key' contenente la
- * passphrase configurata come app setting ADMIN_KEY. Il confronto
- * è a tempo costante, non string-equals.
+ * Il client DEVE inviare l'header 'x-admin-key' (Node HTTP lowercase)
+ * contenente la passphrase configurata come app setting ADMIN_KEY.
+ * Confronto a tempo costante per evitare timing leak.
  * ────────────────────────────────────────────────────────────── */
 
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) {
-    // Non usciamo subito: consumiamo comunque i byte per evitare timing leak
-    // quando le lunghezze differiscono.
     let acc = a.length ^ b.length;
     for (let i = 0; i < b.length; i++) acc |= a.charCodeAt(i % a.length) ^ b.charCodeAt(i);
     return acc === 0 && a.length === b.length;
@@ -139,12 +153,12 @@ function timingSafeEqual(a: string, b: string): boolean {
   return acc === 0;
 }
 
-function authorized(req: HttpRequest): boolean {
+function authorized(req: V3Request): boolean {
   const expected = process.env.ADMIN_KEY;
   if (!expected || expected.length < 16) return false;
 
-  const received =
-    (req.headers.get('x-admin-key') ?? '').trim();
+  const headers = req.headers ?? {};
+  const received = (headers['x-admin-key'] ?? '').trim();
 
   if (!received) return false;
   return timingSafeEqual(received, expected);
@@ -165,12 +179,10 @@ async function fetchAllRsvpRecords(): Promise<RsvpRecord[]> {
   const containerClient = client.getContainerClient(containerName);
 
   const records: RsvpRecord[] = [];
-  const iter = containerClient.listBlobsByHierarchy('rsvp/', {
-    prefix: 'rsvp/',
-  });
+  // listBlobsFlat: elenca TUTTI i blob sotto 'rsvp/' ricorsivamente.
+  const iter = containerClient.listBlobsFlat({ prefix: 'rsvp/' });
 
   for await (const item of iter) {
-    if (item.kind !== 'blob') continue;
     if (!item.name.endsWith('.json')) continue;
 
     const blobClient = containerClient.getBlobClient(item.name);
@@ -222,7 +234,7 @@ function summarize(rows: RsvpRecord[]): DashboardSummary {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const lastSevenDays: DaylyBucket[] = Array.from(
+  const lastSevenDays: DailyBucket[] = Array.from(
     { length: 7 },
     (_, i) => {
       const d = new Date(today.getTime() - (6 - i) * DAY_IN_MS);
@@ -245,10 +257,17 @@ function summarize(rows: RsvpRecord[]): DashboardSummary {
 
   let adultsTotal = 0;
   let childrenTotal = 0;
+  let roomsBooked = 0;
+  let roomGuestsTotal = 0;
 
   for (const r of rows) {
     adultsTotal += r.adults ?? 0;
     childrenTotal += r.bringingChildren ? r.childrenCount ?? 0 : 0;
+
+    if (r.needsRoom) {
+      roomsBooked += 1;
+      roomGuestsTotal += r.roomGuests ?? 0;
+    }
 
     if (r.recipient === 'nicolas' || r.recipient === 'giulia') {
       byRecipient[r.recipient] += 1;
@@ -274,6 +293,8 @@ function summarize(rows: RsvpRecord[]): DashboardSummary {
     adultsTotal,
     childrenTotal,
     guestsTotal: adultsTotal + childrenTotal,
+    roomsBooked,
+    roomGuestsTotal,
     byRecipient,
     intolerances,
     intolerancesOther,
@@ -282,14 +303,14 @@ function summarize(rows: RsvpRecord[]): DashboardSummary {
 }
 
 /* ──────────────────────────────────────────────────────────────
- * Handler HTTP
+ * Handler HTTP (modello v3: context + req, contesto.res per risposta)
  * ────────────────────────────────────────────────────────────── */
 
 function buildResponse(
   status: number,
   body: unknown,
   extraHeaders: Record<string, string> = {},
-): HttpResponseInit {
+): V3Response {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json; charset=utf-8',
     ...extraHeaders,
@@ -301,17 +322,16 @@ function buildResponse(
   return { status, body: JSON.stringify(body), headers };
 }
 
-export async function RsvpDashboard(
-  req: HttpRequest,
-  context: InvocationContext,
-): Promise<HttpResponseInit> {
-  context.log(
-    `HTTP trigger RsvpDashboard ricevuto da ${req.headers.get('origin') ?? 'unknown-origin'}`,
-  );
+async function RsvpDashboard(
+  context: V3Context,
+  req: V3Request,
+): Promise<V3Response> {
+  const origin = req.headers?.['origin'] ?? 'unknown-origin';
+  context.log.info(`HTTP trigger RsvpDashboard ricevuto da ${origin}`);
 
   if (CORS_ORIGINS.length > 0) {
-    const origin = req.headers.get('origin') ?? '';
-    if (origin && !CORS_ORIGINS.includes(origin)) {
+    const reqOrigin = req.headers?.['origin'] ?? '';
+    if (reqOrigin && !CORS_ORIGINS.includes(reqOrigin)) {
       return buildResponse(403, { error: 'Origin non autorizzato' });
     }
   }
@@ -327,7 +347,9 @@ export async function RsvpDashboard(
     return buildResponse(200, reply);
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Errore sconosciuto';
-    context.error(`Errore in RsvpDashboard: ${message}`);
+    context.log.error(`Errore in RsvpDashboard: ${message}`);
     return buildResponse(500, { error: 'Errore interno del server' });
   }
 }
+
+module.exports = RsvpDashboard;
