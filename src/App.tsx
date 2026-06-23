@@ -157,23 +157,40 @@ export default function App() {
   const [adminRoute, setAdminRoute] = useState<boolean>(
     () => window.location.hash.toLowerCase() === '#admin',
   );
+  const [fotoRoute, setFotoRoute] = useState<boolean>(
+    () => window.location.hash.toLowerCase() === '#foto',
+  );
   useEffect(() => {
     const handler = () => {
-      const isAdmin = window.location.hash.toLowerCase() === '#admin';
+      const hash = window.location.hash.toLowerCase();
+      const isAdmin = hash === '#admin';
+      const isFoto = hash === '#foto';
       setAdminRoute(isAdmin);
+      setFotoRoute(isFoto);
       if (isAdmin) window.scrollTo(0, 0);
     };
     window.addEventListener('hashchange', handler);
     return () => window.removeEventListener('hashchange', handler);
   }, []);
 
+  // #foto deep-link: used by the wedding QR code so guests land on the upload page in one tap.
+  useEffect(() => {
+    if (!fotoRoute) return;
+    setIntroDone(true);
+    setShowAlbum(true);
+  }, [fotoRoute]);
+
   const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [hasStartedSong, setHasStartedSong] = useState(false);
   const [showTicket, setShowTicket] = useState(false);
-  const [showAlbum, setShowAlbum]   = useState(false);
+  const [showAlbum, setShowAlbum]   = useState<boolean>(
+    () => window.location.hash.toLowerCase() === '#foto',
+  );
   const [copiedIban, setCopiedIban] = useState(false);
   const [isDark, setIsDark] = useState(false);
-  const [introDone, setIntroDone] = useState(false);
+  const [introDone, setIntroDone] = useState<boolean>(
+    () => window.location.hash.toLowerCase() === '#foto',
+  );
   const [rsvpRecipient, setRsvpRecipient] = useState<Recipient | null>(null);
 
   if (adminRoute) {
@@ -563,7 +580,16 @@ export default function App() {
 
         {/* ── Photo album overlay ───────────────────────────────────── */}
         <AnimatePresence>
-          {showAlbum && <PhotoAlbum onClose={() => setShowAlbum(false)} />}
+          {showAlbum && (
+            <PhotoAlbum
+              onClose={() => {
+                setShowAlbum(false);
+                // Exiting from the #foto deep-link: clear the hash so guests
+                // land on the normal invitation page instead of a dead route.
+                if (fotoRoute) window.location.hash = '';
+              }}
+            />
+          )}
         </AnimatePresence>
 
         {/* ── Ticket / gift modal ───────────────────────────────────── */}
