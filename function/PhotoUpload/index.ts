@@ -52,6 +52,73 @@ function sanitizeFileName(name: string): string {
   return base.replace(/[^\w.\-]/g, '_').slice(0, 100);
 }
 
+interface ParsedRequest {
+  contentType: string;
+  rawBody: Buffer;
+  rawFileName: string;
+}
+
+interface ParseError {
+  error: string;
+}
+
+async function parseRequest(req: V3Request, rawContentType: string): Promise<ParsedRequest | ParseError> {
+  const contentType = rawContentType.toLowerCase().split(';')[0].trim();
+
+  if (contentType === 'application/json') {
+    const payload =
+      typeof req.body === 'string' ? JSON.parse(req.body) : (req.body as { file?: string; fileName?: string; contentType?: string });
+    if (typeof payload.file !== 'string') return { error: 'Campo file mancante' };
+    const fileBytes = Buffer.from(payload.file, 'base64');
+    const fileContentType = payload.contentType ?? 'image/jpeg';
+    if (!ALLOWED_CONTENT_TYPES[fileContentType.toLowerCase().split(';')[0].trim()]) {
+      return { error: 'Formato immagine non supportato' };
+    }
+    return {
+      contentType: fileContentType.toLowerCase().split(';')[0].trim(),
+      rawBody: fileBytes,
+      rawFileName: payload.fileName ?? 'photo.jpg',
+    };
+  }
+
+  if (!ALLOWED_CONTENT_TYPES[contentType]) {
+    return { error: 'Formato immagine non supportato' };
+  }
+
+  let rawBody: Buffer;
+  try {
+    rawBody = normalizeBody(req.body);
+  } catch {
+    return { error: 'Body non binario' };
+  }
+
+  const rawFileName =
+    Object.entries(req.headers ?? {}).find(([k]) => k.toLowerCase() === 'x-file-name')?.[1] ??
+    `photo.${ALLOWED_CONTENT_TYPES[contentType]}`;
+
+  return { contentType, rawBody, rawFileName };
+}
+
+function normalizeBody(body: unknown): Buffer {
+  if (Buffer.isBuffer(body)) return body;
+  if (body instanceof ArrayBuffer) return Buffer.from(body);
+  if (body instanceof Uint8Array) return Buffer.from(body);
+  if (typeof body === 'string') {
+    const asBase64 = Buffer.from(body, 'base64');
+    const isJpeg = asBase64[0] === 0xff && asBase64[1] === 0xd8 && asBase64[2] === 0xff;
+    const isPng = asBase64.length >= 8 &&
+      asBase64[0] === 0x89 && asBase64[1] === 0x50 && asBase64[2] === 0x4e && asBase64[3] === 0x47;
+    if (isJpeg || isPng) return asBase64;
+    return Buffer.from(body, 'utf8');
+  }
+  if (body && typeof body === 'object') {
+    const payload = body as { data?: string; base64?: string };
+    const candidate = payload.data ?? payload.base64;
+    if (typeof candidate === 'string') return Buffer.from(candidate, 'base64');
+  }
+  throw new Error('Body non binario');
+}
+
 function detectExtension(contentType: string, buffer: Buffer): string | null {
   const allowed = ALLOWED_CONTENT_TYPES[contentType];
   if (!allowed) return null;
@@ -96,19 +163,30 @@ async function PhotoUpload(context: V3Context, req: V3Request): Promise<V3Respon
   const cors = handleCors(req, context);
   if (cors.handled) return context.res as V3Response;
 
+  context.log.info(
+    `PhotoUpload request: method=${req.method ?? 'undefined'} ` +
+    `content-type=${req.headers?.['content-type'] ?? 'missing'} ` +
+    `x-file-name=${req.headers?.['x-file-name'] ?? 'missing'} ` +
+    `bodyType=${typeof req.body} isBuffer=${Buffer.isBuffer(req.body)} ` +
+    `bodyLength=${Buffer.isBuffer(req.body) ? req.body.length : 'n/a'}`
+  );
+
   if (req.method?.toUpperCase() !== 'POST') {
     return buildResponse(405, { error: 'Metodo non consentito' }, cors.headers);
   }
 
-  const contentType = req.headers?.['content-type'] ?? '';
-  if (!ALLOWED_CONTENT_TYPES[contentType]) {
-    return buildResponse(400, { error: 'Formato immagine non supportato' }, cors.headers);
+  const rawContentType = req.headers?.['content-type'] ?? '';
+  const parsed = await parseRequest(req, rawContentType);
+  if ('error' in parsed) {
+    context.log.error(`PhotoUpload parse error: ${parsed.error}`);
+    return buildResponse(400, { error: parsed.error }, cors.headers);
   }
 
-  const rawBody = req.body;
-  if (!Buffer.isBuffer(rawBody)) {
-    return buildResponse(400, { error: 'Body non binario' }, cors.headers);
-  }
+  const { contentType, rawBody, rawFileName } = parsed;
+  context.log.info(
+    `PhotoUpload parsed: contentType=${contentType} ` +
+    `length=${rawBody.length} firstBytes=[${rawBody.slice(0, 4).join(',')}]`
+  );
 
   if (rawBody.length === 0) {
     return buildResponse(400, { error: 'File vuoto' }, cors.headers);
@@ -123,7 +201,6 @@ async function PhotoUpload(context: V3Context, req: V3Request): Promise<V3Respon
     return buildResponse(400, { error: 'Firma del file non valida' }, cors.headers);
   }
 
-  const rawFileName = req.headers?.['x-file-name'] ?? `photo.${ext}`;
   const fileName = sanitizeFileName(String(rawFileName));
   const id = randomUUID();
   const blobName = `photos/${id}.${ext}`;

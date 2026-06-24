@@ -1,4 +1,5 @@
 .local.RsvpDashboard/
+local.settings.json
 .local.settings.json
 dist/
 node_modules/
