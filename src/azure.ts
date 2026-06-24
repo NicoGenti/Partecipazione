@@ -39,27 +39,31 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
+export async function uploadPhotoBase64(
+  base64: string,
+  fileName: string,
+  contentType: string,
+  blobName: string,
+): Promise<void> {
+  const ext = fileName.split('.').pop() ?? 'jpg';
+  const url = api('/photo');
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      file: base64,
+      fileName: `${blobName}.${ext}`,
+      contentType: contentType || 'application/octet-stream',
+    }),
+  });
+
+  if (!res.ok) throw new Error(`Upload failed: ${res.status} ${res.statusText}`);
+}
+
 export async function uploadPhoto(file: File, blobName: string): Promise<void> {
-  try {
-    const ext = file.name.split('.').pop() ?? 'jpg';
-    const url = api('/photo');
-    const base64 = await fileToBase64(file);
-
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        file: base64,
-        fileName: `${blobName}.${ext}`,
-        contentType: file.type || 'application/octet-stream',
-      }),
-    });
-
-    if (!res.ok) throw new Error(`Upload failed: ${res.status} ${res.statusText}`);
-  } catch (e) {
-    console.error('[uploadPhoto] errore:', e);
-    throw e;
-  }
+  const base64 = await fileToBase64(file);
+  return uploadPhotoBase64(base64, file.name, file.type, blobName);
 }
 
 export async function listPhotos(): Promise<string[]> {

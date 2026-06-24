@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo, type CSSProperties, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Upload, Images, Loader2, AlertCircle, LayoutGrid, Orbit, ChevronLeft, ChevronRight } from 'lucide-react';
-import { isConfigured, uploadPhoto, listPhotos, fetchPhotoBlob, genUUID, buildBlobUrl } from './azure';
+import { isConfigured, uploadPhotoBase64, listPhotos, fetchPhotoBlob, genUUID, buildBlobUrl } from './azure';
 import SphereImageGrid, { type ImageData } from '@/src/components/ui/img-sphere';
 import ImageLightbox from '@/src/components/ui/image-lightbox';
 
@@ -168,6 +168,17 @@ export default function PhotoAlbum({ onClose }: Props) {
     fileInputRef.current?.click();
   };
 
+  const readFileAsBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        resolve(result.split(',')[1] ?? '');
+      };
+      reader.onerror = () => reject(new Error(`Lettura file fallita: ${file.name}`));
+      reader.readAsDataURL(file);
+    });
+
   const handleFiles = async (e: ChangeEvent<HTMLInputElement>): Promise<void> => {
     const files: File[] = e.target.files ? Array.from(e.target.files) : [];
     if (!files.length) return;
@@ -179,7 +190,8 @@ export default function PhotoAlbum({ onClose }: Props) {
     for (const file of files) {
       try {
         const id = genUUID();
-        await uploadPhoto(file, id);
+        const base64 = await readFileAsBase64(file);
+        await uploadPhotoBase64(base64, file.name, file.type, id);
         done++;
         setUploadCount(done);
       } catch {
