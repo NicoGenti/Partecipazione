@@ -111,6 +111,9 @@ export default function RsvpModal({ recipient, onClose }: Props) {
       childrenCount: bringingChildren ? childrenCount : 0,
       intolerances,
       intolerancesOther: intolerances.includes('other') ? intolerancesOther : '',
+      needsRoom: false,
+      roomGuests: 0,
+      roomLocation: 'Villa Montegranelli' as const,
     };
 
     const validationErrors = validateRsvp(draft);
@@ -130,6 +133,9 @@ export default function RsvpModal({ recipient, onClose }: Props) {
       await saveRsvp({
         ...draft,
         deviceId,
+        needsRoom: false,
+        roomGuests: 0,
+        roomLocation: 'Villa Montegranelli',
         submittedAt: new Date().toISOString(),
       });
       setStatus('success');

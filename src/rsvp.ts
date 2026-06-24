@@ -17,6 +17,9 @@ export interface RsvpRecord {
   childrenCount: number;
   intolerances: Intolerance[];
   intolerancesOther: string;
+  needsRoom: boolean;
+  roomGuests: number;
+  roomLocation: 'Villa Montegranelli';
   submittedAt: string;
 }
 
