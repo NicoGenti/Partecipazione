@@ -4,9 +4,10 @@
       "name": "req",
       "type": "httpTrigger",
       "direction": "in",
-      "methods": ["get", "options"],
+      "methods": ["post", "options"],
       "authLevel": "anonymous",
-      "route": "rsvp-dashboard"
+      "route": "photo",
+      "dataType": "binary"
     },
     {
       "name": "$return",
@@ -14,5 +15,5 @@
       "direction": "out"
     }
   ],
-  "scriptFile": "../dist/RsvpDashboard/index.js"
+  "scriptFile": "../dist/PhotoUpload/index.js"
 }

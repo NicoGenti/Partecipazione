@@ -50,10 +50,15 @@ export function buildRsvpCsv(rows: RsvpRecord[]): string {
 }
 
 function escapeCsvField(value: string): string {
-  if (/[";\r\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
+  let v = value;
+  // Previene formula injection in Excel/LibreOffice prefissando caratteri attivatori.
+  if (/^[=+\-@]/.test(v)) {
+    v = `'${v}`;
   }
-  return value;
+  if (/[";\r\n]/.test(v)) {
+    return `"${v.replace(/"/g, '""')}"`;
+  }
+  return v;
 }
 
 function formatDateItalian(iso: string): string {

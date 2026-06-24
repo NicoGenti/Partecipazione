@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Shield } from 'lucide-react';
-import { saveConsent, fetchConsentTemplate, saveConsentDocument, genUUID } from './azure';
+import { saveConsent, genUUID } from './azure';
 
 const CONSENT_VERSION = 'v1';
 const STORAGE_KEY     = 'partecipazione_consent';
@@ -62,37 +62,7 @@ export default function PrivacyModal({ onAccepted, onClose }: Props) {
       },
     };
 
-    const timestampSlug = record.timestamp.replace(/[:.]/g, '-');
-    const displayName   = nickname.trim() || 'Ospite anonimo';
-
-    const templateUrl = import.meta.env.VITE_CONSENT_TEMPLATE_URL;
-
-    const escHtml = (s: string) =>
-      s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-
-    const saveHtmlDocument = async () => {
-      if (!templateUrl) return;
-      let ip = 'IP non disponibile';
-      try {
-        const ipRes = await fetch('https://ipapi.co/json/');
-        if (ipRes.ok) {
-          const ipData = await ipRes.json() as { ip?: string };
-          ip = ipData.ip ?? ip;
-        }
-      } catch { /* fall back to default */ }
-
-      const template = await fetchConsentTemplate(templateUrl);
-      const filled = template
-        .replaceAll('{{NICKNAME}}', escHtml(displayName))
-        .replaceAll('{{DEVICE_ID}}', escHtml(deviceId))
-        .replaceAll('{{TIMESTAMP}}', escHtml(record.timestamp))
-        .replaceAll('{{IP_ADDRESS}}', escHtml(ip))
-        .replaceAll('{{CONSENT_TEXT_VERSION}}', escHtml(CONSENT_VERSION));
-      await saveConsentDocument(deviceId, timestampSlug, filled);
-    };
-
-    await Promise.allSettled([saveConsent(record), saveHtmlDocument()]);
+    await saveConsent(record);
 
     const consentData: ConsentData = { deviceId, accepted: true, nickname: nickname.trim() };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(consentData));
@@ -146,7 +116,7 @@ export default function PrivacyModal({ onAccepted, onClose }: Props) {
             <li>Le foto che carichi saranno <strong>visibili a tutti gli invitati</strong> che accedono a questa pagina.</li>
             <li>Le immagini sono conservate su uno storage privato degli sposi.</li>
             <li>Caricando foto, dichiari di avere il <strong>consenso delle persone ritratte</strong>.</li>
-            <li>Per identificare il tuo dispositivo raccogliamo dati tecnici anonimi (browser, schermo, fuso orario) insieme a un nickname opzionale da te scelto.</li>
+            <li>Per identificare il tuo dispositivo raccogliamo dati tecnici del dispositivo (browser, schermo, fuso orario) insieme a un nickname opzionale da te scelto.</li>
             <li>Nessun dato viene ceduto a terze parti.</li>
           </ul>
           <p className="text-xs text-[#1a4a2e]/60 pt-2">

@@ -1,32 +1,36 @@
-const ACCOUNT_URL = import.meta.env.VITE_AZURE_ACCOUNT_URL;
-const CONTAINER   = import.meta.env.VITE_AZURE_CONTAINER;
-const RAW_SAS     = import.meta.env.VITE_AZURE_SAS;
 import type { RsvpRecord } from './rsvp';
 
-const SAS = RAW_SAS?.startsWith('?') ? RAW_SAS.slice(1) : RAW_SAS;
+const API_BASE = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '');
+const ACCOUNT_URL = import.meta.env.VITE_AZURE_ACCOUNT_URL?.replace(/\/$/, '');
+const CONTAINER = import.meta.env.VITE_AZURE_CONTAINER;
 
 export function isConfigured(): boolean {
-  return !!(ACCOUNT_URL && CONTAINER && SAS);
-}
-
-export function buildBlobUrl(blobPath: string): string {
-  return `${ACCOUNT_URL}/${CONTAINER}/${blobPath}?${SAS}`;
+  return !!(API_BASE && ACCOUNT_URL && CONTAINER);
 }
 
 export function genUUID(): string {
   return crypto.randomUUID();
 }
 
+function api(path: string): string {
+  if (!API_BASE) throw new Error('VITE_API_BASE_URL non configurato');
+  return `${API_BASE}/api${path.startsWith('/') ? path : `/${path}`}`;
+}
+
+export function buildBlobUrl(blobPath: string): string {
+  if (!ACCOUNT_URL || !CONTAINER) throw new Error('Configurazione blob storage mancante');
+  return `${ACCOUNT_URL}/${CONTAINER}/${blobPath}`;
+}
+
 export async function uploadPhoto(file: File, blobName: string): Promise<void> {
   const ext = file.name.split('.').pop() ?? 'jpg';
-  const path = `photos/${blobName}.${ext}`;
-  const url  = buildBlobUrl(path);
+  const url = api('/photo');
 
   const res = await fetch(url, {
-    method: 'PUT',
+    method: 'POST',
     headers: {
-      'x-ms-blob-type': 'BlockBlob',
       'Content-Type': file.type || 'application/octet-stream',
+      'X-File-Name': `${blobName}.${ext}`,
     },
     body: file,
   });
@@ -35,15 +39,12 @@ export async function uploadPhoto(file: File, blobName: string): Promise<void> {
 }
 
 export async function listPhotos(): Promise<string[]> {
-  const listUrl = `${ACCOUNT_URL}/${CONTAINER}?restype=container&comp=list&prefix=photos/&${SAS}`;
-  const res = await fetch(listUrl);
+  const url = api('/photos');
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`List failed: ${res.status}`);
 
-  const text = await res.text();
-  const doc  = new DOMParser().parseFromString(text, 'application/xml');
-  return Array.from(doc.querySelectorAll('Name'))
-    .map(n => n.textContent ?? '')
-    .filter(n => n.startsWith('photos/') && n !== 'photos/');
+  const data = (await res.json()) as { paths?: string[] };
+  return (data.paths ?? []).filter((n) => n.startsWith('photos/') && n !== 'photos/');
 }
 
 export async function fetchPhotoBlob(blobPath: string): Promise<Blob> {
@@ -53,56 +54,22 @@ export async function fetchPhotoBlob(blobPath: string): Promise<Blob> {
   return res.blob();
 }
 
-export async function fetchConsentTemplate(templateUrl: string): Promise<string> {
-  const res = await fetch(templateUrl);
-  if (!res.ok) throw new Error(`Template fetch failed: ${res.status}`);
-  return res.text();
-}
-
-export async function saveConsentDocument(deviceId: string, timestamp: string, html: string): Promise<void> {
-  const path = `consents/${deviceId}-${timestamp}.html`;
-  const url  = buildBlobUrl(path);
-
-  const res = await fetch(url, {
-    method: 'PUT',
-    headers: {
-      'x-ms-blob-type': 'BlockBlob',
-      'Content-Type': 'text/html',
-    },
-    body: html,
-  });
-
-  if (!res.ok) throw new Error(`Consent document save failed: ${res.status}`);
-}
-
 export async function saveConsent(record: object): Promise<void> {
-  const now = new Date().toISOString().replace(/[:.]/g, '-');
-  const deviceId = (record as Record<string, string>).deviceId ?? genUUID();
-  const path = `consents/${deviceId}-${now}.json`;
-  const url  = buildBlobUrl(path);
-
-  const body = JSON.stringify(record, null, 2);
+  const url = api('/consent');
   const res = await fetch(url, {
-    method: 'PUT',
-    headers: {
-      'x-ms-blob-type': 'BlockBlob',
-      'Content-Type': 'application/json',
-    },
-    body,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(record),
   });
-
   if (!res.ok) throw new Error(`Consent save failed: ${res.status}`);
 }
 
 export async function saveRsvp(record: RsvpRecord): Promise<void> {
-  const url = buildBlobUrl(`rsvp/${record.deviceId}.json`);
+  const url = api('/rsvp');
   const res = await fetch(url, {
-    method: 'PUT',
-    headers: {
-      'x-ms-blob-type': 'BlockBlob',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(record, null, 2),
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(record),
   });
   if (!res.ok) throw new Error(`RSVP save failed: ${res.status}`);
 }

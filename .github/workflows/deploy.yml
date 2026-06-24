@@ -38,9 +38,9 @@ jobs:
       - name: Build
         run: npm run build
         env:
+          VITE_API_BASE_URL:         ${{ secrets.VITE_API_BASE_URL }}
           VITE_AZURE_ACCOUNT_URL:    ${{ secrets.AZURE_ACCOUNT_URL }}
           VITE_AZURE_CONTAINER:      ${{ secrets.AZURE_CONTAINER }}
-          VITE_AZURE_SAS:            ${{ secrets.AZURE_SAS }}
           VITE_WATERMARK_ENABLED:    ${{ vars.VITE_WATERMARK_ENABLED }}
           VITE_DASHBOARD_ENDPOINT:   ${{ secrets.VITE_DASHBOARD_ENDPOINT }}
 

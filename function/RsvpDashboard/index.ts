@@ -1,7 +1,6 @@
-import {
-  BlobServiceClient,
-  StorageSharedKeyCredential,
-} from '@azure/storage-blob';
+import { createHash, timingSafeEqual } from 'crypto';
+import { blobService, containerName } from '../shared/storage';
+import { handleCors } from '../shared/cors';
 
 /* ──────────────────────────────────────────────────────────────
  * Tipi minimi compatibili col runtime v3 di Azure Functions (Node).
@@ -91,47 +90,37 @@ interface DashboardReply {
   rows: RsvpRecord[];
 }
 
-const CORS_ORIGINS = (process.env.CORS_ORIGINS ?? '').split(',')
-  .map((s) => s.trim())
-  .filter(Boolean);
-
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
 /* ──────────────────────────────────────────────────────────────
- * Accesso Storage
- *
- * Due modalità, in ordine di preferenza:
- *   1. Storage account name + key (credenziali complete).
- *   2. SAS read-only scoper a 'rsvp/' impostata come app setting
- *      RSVP_READ_SAS (senza punto interrogativo iniziale).
+ * Rate limiting in-memory (10 tentativi / minuto / IP).
  * ────────────────────────────────────────────────────────────── */
 
-function buildBlobServiceClient(): BlobServiceClient {
-  const accountName = process.env.STORAGE_ACCOUNT_NAME;
-  const accountKey = process.env.STORAGE_ACCOUNT_KEY;
-  const accountUrl = process.env.STORAGE_ACCOUNT_URL
-    ?? (accountName ? `https://${accountName}.blob.core.windows.net` : null);
-  const sas = process.env.RSVP_READ_SAS?.replace(/^\?/, '');
+interface RateEntry {
+  count: number;
+  resetAt: number;
+}
 
-  if (!accountUrl) {
-    throw new Error('STORAGE_ACCOUNT_URL non configurato');
+const attempts = new Map<string, RateEntry>();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_MAX_ATTEMPTS = 10;
+
+function getClientIp(req: V3Request): string {
+  // x-forwarded-for può contenere più IP separati da virgola; prendiamo il primo.
+  const forwarded = req.headers?.['x-forwarded-for'] ?? '';
+  if (forwarded) return forwarded.split(',')[0].trim();
+  return req.headers?.['x-real-ip'] ?? 'unknown';
+}
+
+function rateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = attempts.get(ip);
+  if (!entry || now > entry.resetAt) {
+    attempts.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return false;
   }
-
-  if (accountName && accountKey) {
-    const credential = new StorageSharedKeyCredential(
-      accountName,
-      accountKey,
-    );
-    return new BlobServiceClient(accountUrl, credential);
-  }
-
-  if (sas) {
-    return new BlobServiceClient(`${accountUrl}?${sas}`);
-  }
-
-  throw new Error(
-    'Configurazione Storage mancante: imposta STORAGE_ACCOUNT_NAME + STORAGE_ACCOUNT_KEY oppure RSVP_READ_SAS',
-  );
+  entry.count += 1;
+  return entry.count > RATE_LIMIT_MAX_ATTEMPTS;
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -139,18 +128,13 @@ function buildBlobServiceClient(): BlobServiceClient {
  *
  * Il client DEVE inviare l'header 'x-admin-key' (Node HTTP lowercase)
  * contenente la passphrase configurata come app setting ADMIN_KEY.
- * Confronto a tempo costante per evitare timing leak.
+ * Confronto a tempo costante tramite timingSafeEqual su hash SHA-256.
  * ────────────────────────────────────────────────────────────── */
 
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) {
-    let acc = a.length ^ b.length;
-    for (let i = 0; i < b.length; i++) acc |= a.charCodeAt(i % a.length) ^ b.charCodeAt(i);
-    return acc === 0 && a.length === b.length;
-  }
-  let acc = 0;
-  for (let i = 0; i < a.length; i++) acc |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return acc === 0;
+function secureCompare(a: string, b: string): boolean {
+  const ha = createHash('sha256').update(a).digest();
+  const hb = createHash('sha256').update(b).digest();
+  return timingSafeEqual(ha, hb);
 }
 
 function authorized(req: V3Request): boolean {
@@ -159,9 +143,9 @@ function authorized(req: V3Request): boolean {
 
   const headers = req.headers ?? {};
   const received = (headers['x-admin-key'] ?? '').trim();
-
   if (!received) return false;
-  return timingSafeEqual(received, expected);
+
+  return secureCompare(received, expected);
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -169,14 +153,7 @@ function authorized(req: V3Request): boolean {
  * ────────────────────────────────────────────────────────────── */
 
 async function fetchAllRsvpRecords(): Promise<RsvpRecord[]> {
-  const client = buildBlobServiceClient();
-  const containerName =
-    process.env.RSVP_CONTAINER_NAME ?? process.env.AZURE_CONTAINER;
-  if (!containerName) {
-    throw new Error('RSVP_CONTAINER_NAME non configurato');
-  }
-
-  const containerClient = client.getContainerClient(containerName);
+  const containerClient = blobService.getContainerClient(containerName);
 
   const records: RsvpRecord[] = [];
   // listBlobsFlat: elenca TUTTI i blob sotto 'rsvp/' ricorsivamente.
@@ -206,11 +183,11 @@ function isRsvpRecord(v: unknown): v is RsvpRecord {
   if (typeof v !== 'object' || v === null) return false;
   const r = v as Partial<RsvpRecord>;
   return (
-    typeof r.deviceId === 'string' &&
-    typeof r.fullName === 'string' &&
+    typeof r.deviceId === 'string' && r.deviceId.length <= 64 &&
+    typeof r.fullName === 'string' && r.fullName.length <= 200 &&
+    typeof r.submittedAt === 'string' && r.submittedAt.length <= 50 &&
     typeof r.adults === 'number' &&
     typeof r.childrenCount === 'number' &&
-    typeof r.submittedAt === 'string' &&
     Array.isArray(r.intolerances)
   );
 }
@@ -311,37 +288,41 @@ function buildResponse(
   body: unknown,
   extraHeaders: Record<string, string> = {},
 ): V3Response {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json; charset=utf-8',
-    ...extraHeaders,
+  return {
+    status,
+    body: JSON.stringify(body),
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      ...extraHeaders,
+    },
   };
-  if (CORS_ORIGINS.length > 0) {
-    headers['Access-Control-Allow-Origin'] = CORS_ORIGINS.join(', ');
-    headers['Vary'] = 'Origin';
-  }
-  return { status, body: JSON.stringify(body), headers };
 }
 
-async function RsvpDashboard(
-  context: V3Context,
-  req: V3Request,
-): Promise<V3Response> {
-  const origin = req.headers?.['origin'] ?? 'unknown-origin';
+async function RsvpDashboard(context: V3Context, req: V3Request): Promise<V3Response> {
+  const cors = handleCors(req, context);
+  if (cors.handled) return context.res as V3Response;
+
+  const origin = (req.headers?.['origin'] ?? 'unknown').replace(/[\r\n]/g, '');
   context.log.info(`HTTP trigger RsvpDashboard ricevuto da ${origin}`);
 
+  const clientIp = getClientIp(req);
+  if (rateLimited(clientIp)) {
+    return buildResponse(429, { error: 'Troppi tentativi. Riprova tra un minuto.' }, cors.headers);
+  }
+
   if (!authorized(req)) {
-    return buildResponse(401, { error: 'X-Admin-Key mancante o errato' });
+    return buildResponse(401, { error: 'X-Admin-Key mancante o errato' }, cors.headers);
   }
 
   try {
     const rows = await fetchAllRsvpRecords();
     const summary = summarize(rows);
     const reply: DashboardReply = { summary, rows };
-    return buildResponse(200, reply);
+    return buildResponse(200, reply, cors.headers);
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Errore sconosciuto';
     context.log.error(`Errore in RsvpDashboard: ${message}`);
-    return buildResponse(500, { error: 'Errore interno del server' });
+    return buildResponse(500, { error: 'Errore interno del server' }, cors.headers);
   }
 }
 

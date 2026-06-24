@@ -1,10 +1,11 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
+  readonly VITE_API_BASE_URL: string | undefined;
   readonly VITE_AZURE_ACCOUNT_URL: string | undefined;
   readonly VITE_AZURE_CONTAINER: string | undefined;
-  readonly VITE_AZURE_SAS: string | undefined;
-  readonly VITE_CONSENT_TEMPLATE_URL: string | undefined;
+  readonly VITE_WATERMARK_ENABLED: string | undefined;
+  readonly VITE_DASHBOARD_ENDPOINT: string | undefined;
 }
 
 interface ImportMeta {
