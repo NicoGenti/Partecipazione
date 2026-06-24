@@ -27,29 +27,39 @@ function fileToBase64(file: File): Promise<string> {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
+      if (typeof result !== 'string' || !result.includes(',')) {
+        reject(new Error('FileReader result non valido'));
+        return;
+      }
       resolve(result.split(',')[1] ?? '');
     };
-    reader.onerror = reject;
+    reader.onerror = () => reject(new Error(`FileReader error: ${reader.error?.message ?? 'sconosciuto'}`));
+    reader.onabort = () => reject(new Error('FileReader abort'));
     reader.readAsDataURL(file);
   });
 }
 
 export async function uploadPhoto(file: File, blobName: string): Promise<void> {
-  const ext = file.name.split('.').pop() ?? 'jpg';
-  const url = api('/photo');
-  const base64 = await fileToBase64(file);
+  try {
+    const ext = file.name.split('.').pop() ?? 'jpg';
+    const url = api('/photo');
+    const base64 = await fileToBase64(file);
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      file: base64,
-      fileName: `${blobName}.${ext}`,
-      contentType: file.type || 'application/octet-stream',
-    }),
-  });
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        file: base64,
+        fileName: `${blobName}.${ext}`,
+        contentType: file.type || 'application/octet-stream',
+      }),
+    });
 
-  if (!res.ok) throw new Error(`Upload failed: ${res.status} ${res.statusText}`);
+    if (!res.ok) throw new Error(`Upload failed: ${res.status} ${res.statusText}`);
+  } catch (e) {
+    console.error('[uploadPhoto] errore:', e);
+    throw e;
+  }
 }
 
 export async function listPhotos(): Promise<string[]> {
