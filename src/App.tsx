@@ -485,8 +485,8 @@ export default function App() {
               A seguire la cerimonia
             </p>
             <p className="mb-5 leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
-              Ristorante Villa Monte Granelli<br />
-              Località Spaccio Monteluiviano<br />
+              Ristorante Villa Montegranelli<br />
+              Località Spaccio Monteluiano<br />
               06024 Gubbio (PG)
             </p>
             <a
