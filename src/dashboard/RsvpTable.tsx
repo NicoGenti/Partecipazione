@@ -67,6 +67,7 @@ export default function RsvpTable({ rows }: Props) {
       if (q.length === 0) return true;
       return (
         r.fullName.toLowerCase().includes(q) ||
+        (r.guestNames ?? []).some((n) => n.toLowerCase().includes(q)) ||
         (r.intolerancesOther ?? '').toLowerCase().includes(q) ||
         RECIPIENT_LABELS[r.recipient].toLowerCase().includes(q)
       );
@@ -184,6 +185,9 @@ export default function RsvpTable({ rows }: Props) {
                               className="overflow-hidden"
                             >
                               <div className="p-4 bg-[#fdfaf1]/60 border-t border-[#d4af37]/20 space-y-2 text-sm font-body text-[#1a4a2e]">
+                                {r.guestNames && r.guestNames.length > 0 && (
+                                  <p><strong className="font-cinzel text-[0.66rem] uppercase tracking-widest text-[#1a4a2e]/60">Accompagnatori:</strong> {r.guestNames.filter(Boolean).join(', ')}</p>
+                                )}
                                 <p><strong className="font-cinzel text-[0.66rem] uppercase tracking-widest text-[#1a4a2e]/60">Intolleranze:</strong> {r.intolerances.length > 0 ? r.intolerances.map((it) => INTOLERANCE_LABELS[it]).join(', ') : 'nessuna'}</p>
                                 {r.intolerancesOther && (
                                   <p><strong className="font-cinzel text-[0.66rem] uppercase tracking-widest text-[#1a4a2e]/60">Dettaglio:</strong> {r.intolerancesOther}</p>

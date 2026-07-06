@@ -83,6 +83,10 @@ function isValidRsvpRecord(v: unknown): v is RsvpRecord {
   if (r.bringingChildren && childrenCount < 1) return false;
   if (!r.bringingChildren && childrenCount !== 0) return false;
 
+  if (!Array.isArray(r.guestNames)) return false;
+  if (r.guestNames.length !== Math.max(0, adults - 1)) return false;
+  if (r.guestNames.some((n) => typeof n !== 'string' || n.length > 200)) return false;
+
   if (typeof r.needsRoom !== 'boolean') return false;
   const roomGuests = Number(r.roomGuests);
   if (!Number.isInteger(roomGuests) || roomGuests < 0 || roomGuests > 20) return false;

@@ -16,6 +16,7 @@ export function buildRsvpCsv(rows: RsvpRecord[]): string {
     'Nome e cognome',
     'Referente',
     'Adulti',
+    'Accompagnatori',
     'Bambini',
     'Intolleranze',
     'Dettaglio intolleranze',
@@ -31,10 +32,13 @@ export function buildRsvpCsv(rows: RsvpRecord[]): string {
 
     const submitted = formatDateItalian(r.submittedAt);
 
+    const guestNamesText = (r.guestNames ?? []).filter(Boolean).join(', ');
+
     const fields = [
       r.fullName ?? '',
       RECIP_LABELS[r.recipient] ?? r.recipient,
       String(r.adults ?? 0),
+      guestNamesText,
       String(r.bringingChildren ? r.childrenCount ?? 0 : 0),
       intolerancesText,
       r.intolerancesOther ?? '',

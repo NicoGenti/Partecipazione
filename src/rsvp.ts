@@ -13,6 +13,7 @@ export interface RsvpRecord {
   recipient: Recipient;
   fullName: string;
   adults: number;
+  guestNames: string[];
   bringingChildren: boolean;
   childrenCount: number;
   intolerances: Intolerance[];
@@ -63,6 +64,16 @@ export function validateRsvp(
   const adults = Number(d.adults);
   if (!Number.isInteger(adults) || adults < 1 || adults > 10) {
     e.adults = 'Da 1 a 10 adulti';
+  }
+
+  if (Array.isArray(d.guestNames)) {
+    const required = Math.max(0, adults - 1);
+    for (let i = 0; i < required; i++) {
+      if (!d.guestNames[i]?.trim()) {
+        e.guestNames = 'Inserisci nome e cognome di tutti gli accompagnatori';
+        break;
+      }
+    }
   }
 
   if (d.bringingChildren) {

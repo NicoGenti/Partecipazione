@@ -18,6 +18,7 @@ export interface RsvpRecord {
   recipient: Recipient;
   fullName: string;
   adults: number;
+  guestNames: string[];
   bringingChildren: boolean;
   childrenCount: number;
   intolerances: Intolerance[];

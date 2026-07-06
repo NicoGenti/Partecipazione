@@ -33,6 +33,7 @@ export default function RsvpModal({ recipient, onClose }: Props) {
 
   const [fullName, setFullName] = useState('');
   const [adults, setAdults] = useState<number>(1);
+  const [guestNames, setGuestNames] = useState<string[]>([]);
   const [bringingChildren, setBringingChildren] = useState(false);
   const [childrenCount, setChildrenCount] = useState<number>(0);
   const [intolerances, setIntolerances] = useState<Intolerance[]>([]);
@@ -91,6 +92,16 @@ export default function RsvpModal({ recipient, onClose }: Props) {
     return () => window.removeEventListener('keydown', handleTab);
   }, []);
 
+  useEffect(() => {
+    const targetLen = Math.max(0, adults - 1);
+    setGuestNames((prev) => {
+      if (prev.length === targetLen) return prev;
+      const next = prev.slice(0, targetLen);
+      while (next.length < targetLen) next.push('');
+      return next;
+    });
+  }, [adults]);
+
   const toggleIntolerance = useCallback((value: Intolerance) => {
     setIntolerances((prev) =>
       prev.includes(value)
@@ -107,6 +118,7 @@ export default function RsvpModal({ recipient, onClose }: Props) {
       recipient,
       fullName,
       adults,
+      guestNames,
       bringingChildren,
       childrenCount: bringingChildren ? childrenCount : 0,
       intolerances,
@@ -299,6 +311,55 @@ export default function RsvpModal({ recipient, onClose }: Props) {
                 )}
               </AnimatePresence>
             </div>
+
+            {/* Guest names — shown when adults > 1 */}
+            {adults > 1 && (
+              <div>
+                <p className="font-cinzel text-xs uppercase tracking-widest mb-3 text-[#1a4a2e]/70">
+                  Nome e cognome degli accompagnatori <span aria-label="obbligatorio">*</span>
+                </p>
+                <div className="space-y-3">
+                  {guestNames.map((name, i) => (
+                    <div key={i}>
+                      <label
+                        htmlFor={`rsvp-guest-${i}`}
+                        className="block font-cinzel text-[0.65rem] uppercase tracking-widest mb-1.5 text-[#1a4a2e]/50"
+                      >
+                        Accompagnatore {i + 1}
+                      </label>
+                      <input
+                        id={`rsvp-guest-${i}`}
+                        type="text"
+                        value={name}
+                        onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                          setGuestNames((prev) => {
+                            const next = [...prev];
+                            next[i] = e.target.value;
+                            return next;
+                          });
+                        }}
+                        placeholder="Es. Maria Rossi"
+                        maxLength={80}
+                        aria-invalid={!!errors.guestNames}
+                        className={inputClass(!!errors.guestNames)}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <AnimatePresence>
+                  {errors.guestNames && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      className="mt-1.5 text-xs text-[#8b1a1a] font-body"
+                    >
+                      {errors.guestNames}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
 
             {/* Children */}
             <fieldset>
