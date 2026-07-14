@@ -24,6 +24,100 @@ interface Props {
   onClose: () => void;
 }
 
+function IntoleranceCheckboxes({
+  label,
+  values,
+  onToggle,
+  otherValue,
+  onOtherChange,
+  otherError,
+}: {
+  label: string;
+  values: Intolerance[];
+  onToggle: (v: Intolerance) => void;
+  otherValue?: string;
+  onOtherChange?: (v: string) => void;
+  otherError?: string;
+}) {
+  return (
+    <div className="mt-2 pl-1 border-l-2 border-[#d4af37]/30">
+      <p className="font-cinzel text-[0.6rem] uppercase tracking-widest mb-2 text-[#1a4a2e]/60">
+        {label}
+      </p>
+      <div className="space-y-1.5">
+        {INTOLERANCE_OPTIONS.map(({ value, label: optLabel }) => (
+          <label key={value} className="flex items-start gap-3 cursor-pointer group">
+            <div className="relative mt-0.5 shrink-0">
+              <input
+                type="checkbox"
+                checked={values.includes(value)}
+                onChange={() => onToggle(value)}
+                className="sr-only"
+              />
+              <div
+                className={`w-4 h-4 border-2 rounded-sm transition-colors flex items-center justify-center ${
+                  values.includes(value)
+                    ? 'bg-[#1a4a2e] border-[#1a4a2e]'
+                    : 'border-[#1a4a2e]/40 group-hover:border-[#1a4a2e]/70'
+                }`}
+              >
+                <AnimatePresence>
+                  {values.includes(value) && (
+                    <motion.svg
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      exit={{ scale: 0 }}
+                      viewBox="0 0 12 10"
+                      className="w-2.5 h-2.5 text-[#d4af37]"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <polyline points="1,5 4,8 11,1" />
+                    </motion.svg>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+            <span className="font-body text-xs text-[#1a4a2e]/70 leading-snug">
+              {optLabel}
+            </span>
+          </label>
+        ))}
+      </div>
+      <AnimatePresence>
+        {values.includes('other') && onOtherChange && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="mt-2">
+              <textarea
+                value={otherValue ?? ''}
+                onChange={(e) => onOtherChange(e.target.value)}
+                maxLength={120}
+                rows={1}
+                placeholder="Specifica…"
+                aria-invalid={!!otherError}
+                className={`w-full border rounded-sm px-3 py-1.5 font-body text-xs text-[#1a4a2e] placeholder:text-[#1a4a2e]/30 focus:outline-none transition-colors ${
+                  otherError
+                    ? 'border-[#8b1a1a] bg-[#8b1a1a]/5'
+                    : 'border-[#1a4a2e]/30 bg-white/60 focus:border-[#1a4a2e]/60'
+                }`}
+              />
+              {otherError && (
+                <p className="mt-0.5 text-[0.6rem] text-[#8b1a1a] font-body">{otherError}</p>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export default function RsvpModal({ onClose }: Props) {
   const reduced = useReducedMotion();
   const cardRef = useRef<HTMLDivElement>(null);
@@ -239,100 +333,6 @@ export default function RsvpModal({ onClose }: Props) {
         ? 'border-[#8b1a1a] bg-[#8b1a1a]/5 focus:border-[#8b1a1a]'
         : 'border-[#1a4a2e]/30 bg-white/60 focus:border-[#1a4a2e]/60 focus:bg-white/80'
     }`;
-
-  function IntoleranceCheckboxes({
-    label,
-    values,
-    onToggle,
-    otherValue,
-    onOtherChange,
-    otherError,
-  }: {
-    label: string;
-    values: Intolerance[];
-    onToggle: (v: Intolerance) => void;
-    otherValue?: string;
-    onOtherChange?: (v: string) => void;
-    otherError?: string;
-  }) {
-    return (
-      <div className="mt-2 pl-1 border-l-2 border-[#d4af37]/30">
-        <p className="font-cinzel text-[0.6rem] uppercase tracking-widest mb-2 text-[#1a4a2e]/60">
-          {label}
-        </p>
-        <div className="space-y-1.5">
-          {INTOLERANCE_OPTIONS.map(({ value, label: optLabel }) => (
-            <label key={value} className="flex items-start gap-3 cursor-pointer group">
-              <div className="relative mt-0.5 shrink-0">
-                <input
-                  type="checkbox"
-                  checked={values.includes(value)}
-                  onChange={() => onToggle(value)}
-                  className="sr-only"
-                />
-                <div
-                  className={`w-4 h-4 border-2 rounded-sm transition-colors flex items-center justify-center ${
-                    values.includes(value)
-                      ? 'bg-[#1a4a2e] border-[#1a4a2e]'
-                      : 'border-[#1a4a2e]/40 group-hover:border-[#1a4a2e]/70'
-                  }`}
-                >
-                  <AnimatePresence>
-                    {values.includes(value) && (
-                      <motion.svg
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        exit={{ scale: 0 }}
-                        viewBox="0 0 12 10"
-                        className="w-2.5 h-2.5 text-[#d4af37]"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                      >
-                        <polyline points="1,5 4,8 11,1" />
-                      </motion.svg>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </div>
-              <span className="font-body text-xs text-[#1a4a2e]/70 leading-snug">
-                {optLabel}
-              </span>
-            </label>
-          ))}
-        </div>
-        <AnimatePresence>
-          {values.includes('other') && onOtherChange && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="mt-2">
-                <textarea
-                  value={otherValue ?? ''}
-                  onChange={(e) => onOtherChange(e.target.value)}
-                  maxLength={120}
-                  rows={1}
-                  placeholder="Specifica…"
-                  aria-invalid={!!otherError}
-                  className={`w-full border rounded-sm px-3 py-1.5 font-body text-xs text-[#1a4a2e] placeholder:text-[#1a4a2e]/30 focus:outline-none transition-colors ${
-                    otherError
-                      ? 'border-[#8b1a1a] bg-[#8b1a1a]/5'
-                      : 'border-[#1a4a2e]/30 bg-white/60 focus:border-[#1a4a2e]/60'
-                  }`}
-                />
-                {otherError && (
-                  <p className="mt-0.5 text-[0.6rem] text-[#8b1a1a] font-body">{otherError}</p>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    );
-  }
 
   return (
     <motion.div
