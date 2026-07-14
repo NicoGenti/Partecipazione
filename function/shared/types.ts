@@ -13,9 +13,15 @@ export type Intolerance =
   | 'nut-allergy'
   | 'other';
 
+export interface GuestIntolerances {
+  name: string;
+  intolerances: Intolerance[];
+  intolerancesOther: string;
+}
+
 export interface RsvpRecord {
   deviceId: string;
-  recipient: Recipient;
+  recipient?: Recipient;
   fullName: string;
   adults: number;
   guestNames: string[];
@@ -23,6 +29,8 @@ export interface RsvpRecord {
   childrenCount: number;
   intolerances: Intolerance[];
   intolerancesOther: string;
+  /** Per-guest intolerances (new format). Falls back to top-level `intolerances` for legacy records. */
+  guestIntolerances?: GuestIntolerances[];
   needsRoom: boolean;
   roomGuests: number;
   roomLocation: 'Villa Montegranelli';

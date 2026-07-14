@@ -14,19 +14,17 @@ import { getOrCreateDeviceId } from './deviceId';
 import {
   buildWhatsAppUrl,
   INTOLERANCE_OPTIONS,
-  RSVP_RECIPIENTS,
   validateRsvp,
+  type GuestIntolerances,
   type Intolerance,
-  type Recipient,
   type RsvpRecord,
 } from './rsvp';
 
 interface Props {
-  recipient: Recipient;
   onClose: () => void;
 }
 
-export default function RsvpModal({ recipient, onClose }: Props) {
+export default function RsvpModal({ onClose }: Props) {
   const reduced = useReducedMotion();
   const cardRef = useRef<HTMLDivElement>(null);
   const firstFieldRef = useRef<HTMLInputElement>(null);
@@ -36,14 +34,19 @@ export default function RsvpModal({ recipient, onClose }: Props) {
   const [guestNames, setGuestNames] = useState<string[]>([]);
   const [bringingChildren, setBringingChildren] = useState(false);
   const [childrenCount, setChildrenCount] = useState<number>(0);
-  const [intolerances, setIntolerances] = useState<Intolerance[]>([]);
-  const [intolerancesOther, setIntolerancesOther] = useState('');
+
+  // Per-person intolerances
+  const [respondentIntolerances, setRespondentIntolerances] = useState<Intolerance[]>([]);
+  const [respondentIntolerancesOther, setRespondentIntolerancesOther] = useState('');
+  const [guestIntoleranceList, setGuestIntoleranceList] = useState<
+    { intolerances: Intolerance[]; intolerancesOther: string }[]
+  >([]);
+  const [childrenIntolerances, setChildrenIntolerances] = useState<Intolerance[]>([]);
+  const [childrenIntolerancesOther, setChildrenIntolerancesOther] = useState('');
+  const [guestOtherErrors, setGuestOtherErrors] = useState<Record<number, string>>({});
 
   const [status, setStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [errors, setErrors] = useState<Partial<Record<keyof RsvpRecord, string>>>({});
-
-  const recipientLabel = RSVP_RECIPIENTS[recipient].label;
-  const whatsappUrl = buildWhatsAppUrl(recipient);
 
   // Focus first field on open; restore focus handled by App via natural React focus.
   useEffect(() => {
@@ -100,13 +103,47 @@ export default function RsvpModal({ recipient, onClose }: Props) {
       while (next.length < targetLen) next.push('');
       return next;
     });
+    setGuestIntoleranceList((prev) => {
+      if (prev.length === targetLen) return prev;
+      const next = prev.slice(0, targetLen);
+      while (next.length < targetLen)
+        next.push({ intolerances: [], intolerancesOther: '' });
+      return next;
+    });
   }, [adults]);
 
-  const toggleIntolerance = useCallback((value: Intolerance) => {
-    setIntolerances((prev) =>
-      prev.includes(value)
-        ? prev.filter((v) => v !== value)
-        : [...prev, value],
+  const toggleRespondentIntolerance = useCallback((value: Intolerance) => {
+    setRespondentIntolerances((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value],
+    );
+  }, []);
+
+  const toggleGuestIntolerance = useCallback(
+    (index: number, value: Intolerance) => {
+      setGuestIntoleranceList((prev) => {
+        const next = [...prev];
+        const person = { ...next[index] };
+        person.intolerances = person.intolerances.includes(value)
+          ? person.intolerances.filter((v) => v !== value)
+          : [...person.intolerances, value];
+        next[index] = person;
+        return next;
+      });
+    },
+    [],
+  );
+
+  const setGuestOther = useCallback((index: number, value: string) => {
+    setGuestIntoleranceList((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], intolerancesOther: value };
+      return next;
+    });
+  }, []);
+
+  const toggleChildrenIntolerance = useCallback((value: Intolerance) => {
+    setChildrenIntolerances((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value],
     );
   }, []);
 
@@ -114,15 +151,55 @@ export default function RsvpModal({ recipient, onClose }: Props) {
     e.preventDefault();
     if (status === 'saving') return;
 
+    // Build per-guest intolerances array
+    const guests: GuestIntolerances[] = [
+      {
+        name: fullName.trim(),
+        intolerances: respondentIntolerances,
+        intolerancesOther: respondentIntolerances.includes('other')
+          ? respondentIntolerancesOther
+          : '',
+      },
+      ...guestIntoleranceList.map((g, i) => ({
+        name: guestNames[i]?.trim() || '',
+        intolerances: g.intolerances,
+        intolerancesOther: g.intolerances.includes('other') ? g.intolerancesOther : '',
+      })),
+    ];
+    if (bringingChildren && childrenCount > 0) {
+      const childLabel = childrenCount === 1 ? 'Bambino' : 'Bambini';
+      guests.push({
+        name: childLabel,
+        intolerances: childrenIntolerances,
+        intolerancesOther: childrenIntolerances.includes('other')
+          ? childrenIntolerancesOther
+          : '',
+      });
+    }
+
+    // Validate per-guest "other" fields
+    const newGuestErrors: Record<number, string> = {};
+    for (let i = 1; i < guests.length; i++) {
+      const g = guests[i];
+      if (g.intolerances.includes('other') && !g.intolerancesOther.trim()) {
+        newGuestErrors[i] = 'Specifica l\'intolleranza o la preferenza';
+      }
+    }
+    setGuestOtherErrors(newGuestErrors);
+    if (Object.keys(newGuestErrors).length > 0) {
+      setStatus('idle');
+      return;
+    }
+
     const draft = {
-      recipient,
       fullName,
       adults,
       guestNames,
       bringingChildren,
       childrenCount: bringingChildren ? childrenCount : 0,
-      intolerances,
-      intolerancesOther: intolerances.includes('other') ? intolerancesOther : '',
+      intolerances: respondentIntolerances,
+      intolerancesOther: respondentIntolerances.includes('other') ? respondentIntolerancesOther : '',
+      guestIntolerances: guests,
       needsRoom: false,
       roomGuests: 0,
       roomLocation: 'Villa Montegranelli' as const,
@@ -162,6 +239,100 @@ export default function RsvpModal({ recipient, onClose }: Props) {
         ? 'border-[#8b1a1a] bg-[#8b1a1a]/5 focus:border-[#8b1a1a]'
         : 'border-[#1a4a2e]/30 bg-white/60 focus:border-[#1a4a2e]/60 focus:bg-white/80'
     }`;
+
+  function IntoleranceCheckboxes({
+    label,
+    values,
+    onToggle,
+    otherValue,
+    onOtherChange,
+    otherError,
+  }: {
+    label: string;
+    values: Intolerance[];
+    onToggle: (v: Intolerance) => void;
+    otherValue?: string;
+    onOtherChange?: (v: string) => void;
+    otherError?: string;
+  }) {
+    return (
+      <div className="mt-2 pl-1 border-l-2 border-[#d4af37]/30">
+        <p className="font-cinzel text-[0.6rem] uppercase tracking-widest mb-2 text-[#1a4a2e]/60">
+          {label}
+        </p>
+        <div className="space-y-1.5">
+          {INTOLERANCE_OPTIONS.map(({ value, label: optLabel }) => (
+            <label key={value} className="flex items-start gap-3 cursor-pointer group">
+              <div className="relative mt-0.5 shrink-0">
+                <input
+                  type="checkbox"
+                  checked={values.includes(value)}
+                  onChange={() => onToggle(value)}
+                  className="sr-only"
+                />
+                <div
+                  className={`w-4 h-4 border-2 rounded-sm transition-colors flex items-center justify-center ${
+                    values.includes(value)
+                      ? 'bg-[#1a4a2e] border-[#1a4a2e]'
+                      : 'border-[#1a4a2e]/40 group-hover:border-[#1a4a2e]/70'
+                  }`}
+                >
+                  <AnimatePresence>
+                    {values.includes(value) && (
+                      <motion.svg
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        exit={{ scale: 0 }}
+                        viewBox="0 0 12 10"
+                        className="w-2.5 h-2.5 text-[#d4af37]"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <polyline points="1,5 4,8 11,1" />
+                      </motion.svg>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+              <span className="font-body text-xs text-[#1a4a2e]/70 leading-snug">
+                {optLabel}
+              </span>
+            </label>
+          ))}
+        </div>
+        <AnimatePresence>
+          {values.includes('other') && onOtherChange && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-2">
+                <textarea
+                  value={otherValue ?? ''}
+                  onChange={(e) => onOtherChange(e.target.value)}
+                  maxLength={120}
+                  rows={1}
+                  placeholder="Specifica…"
+                  aria-invalid={!!otherError}
+                  className={`w-full border rounded-sm px-3 py-1.5 font-body text-xs text-[#1a4a2e] placeholder:text-[#1a4a2e]/30 focus:outline-none transition-colors ${
+                    otherError
+                      ? 'border-[#8b1a1a] bg-[#8b1a1a]/5'
+                      : 'border-[#1a4a2e]/30 bg-white/60 focus:border-[#1a4a2e]/60'
+                  }`}
+                />
+                {otherError && (
+                  <p className="mt-0.5 text-[0.6rem] text-[#8b1a1a] font-body">{otherError}</p>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -205,9 +376,6 @@ export default function RsvpModal({ recipient, onClose }: Props) {
           >
             Conferma la tua presenza
           </h2>
-          <p className="font-body text-sm text-[#1a4a2e]/70 mt-2 text-center">
-            Stai scrivendo a <span className="font-semibold">{recipientLabel}</span>
-          </p>
           <div className="w-24 h-px bg-[#d4af37] mt-3" />
         </div>
 
@@ -220,18 +388,29 @@ export default function RsvpModal({ recipient, onClose }: Props) {
               Gufo spedito!
             </p>
             <p className="font-body text-sm text-[#1a4a2e]/80 mb-6">
-              Le informazioni sono state salvate. Ora apri WhatsApp per confermare con {recipientLabel}.
+              Grazie per aver confermato! Se vuoi, puoi inviare un messaggio diretto su WhatsApp.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <a
-                href={whatsappUrl}
+                href={buildWhatsAppUrl('nicolas')}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#1a4a2e] border-[3px] border-double border-[#d4af37] text-[#fdfaf1] font-cinzel tracking-[0.15em] uppercase text-sm hover:bg-[#133823] transition-all duration-300 rounded-sm"
               >
                 <Send size={14} className="text-[#d4af37]" />
-                Apri WhatsApp
+                Scrivi a Nicolas
               </a>
+              <a
+                href={buildWhatsAppUrl('giulia')}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#8b1a1a] border-[3px] border-double border-[#d4af37] text-[#fdfaf1] font-cinzel tracking-[0.15em] uppercase text-sm hover:bg-[#6e1414] transition-all duration-300 rounded-sm"
+              >
+                <Send size={14} className="text-[#d4af37]" />
+                Scrivi a Giulia
+              </a>
+            </div>
+            <div className="mt-4">
               <button
                 type="button"
                 onClick={onClose}
@@ -243,7 +422,7 @@ export default function RsvpModal({ recipient, onClose }: Props) {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-            {/* Name */}
+            {/* Name + respondent intolerances */}
             <div>
               <label
                 htmlFor="rsvp-name"
@@ -276,6 +455,14 @@ export default function RsvpModal({ recipient, onClose }: Props) {
                   </motion.p>
                 )}
               </AnimatePresence>
+              <IntoleranceCheckboxes
+                label="Le tue intolleranze o preferenze alimentari"
+                values={respondentIntolerances}
+                onToggle={toggleRespondentIntolerance}
+                otherValue={respondentIntolerancesOther}
+                onOtherChange={setRespondentIntolerancesOther}
+                otherError={errors.intolerancesOther}
+              />
             </div>
 
             {/* Adults */}
@@ -342,6 +529,14 @@ export default function RsvpModal({ recipient, onClose }: Props) {
                         maxLength={80}
                         aria-invalid={!!errors.guestNames}
                         className={inputClass(!!errors.guestNames)}
+                      />
+                      <IntoleranceCheckboxes
+                        label="Intolleranze o preferenze"
+                        values={guestIntoleranceList[i]?.intolerances ?? []}
+                        onToggle={(v) => toggleGuestIntolerance(i, v)}
+                        otherValue={guestIntoleranceList[i]?.intolerancesOther ?? ''}
+                        onOtherChange={(v) => setGuestOther(i, v)}
+                        otherError={guestOtherErrors[i]}
                       />
                     </div>
                   ))}
@@ -459,100 +654,13 @@ export default function RsvpModal({ recipient, onClose }: Props) {
                           </motion.p>
                         )}
                       </AnimatePresence>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </fieldset>
-
-            {/* Intolerances */}
-            <fieldset>
-              <legend className="block font-cinzel text-xs uppercase tracking-widest mb-2 text-[#1a4a2e]/70">
-                Intolleranze o preferenze alimentari
-              </legend>
-              <div className="space-y-2">
-                {INTOLERANCE_OPTIONS.map(({ value, label }) => (
-                  <label key={value} className="flex items-start gap-3 cursor-pointer group">
-                    <div className="relative mt-0.5 shrink-0">
-                      <input
-                        type="checkbox"
-                        checked={intolerances.includes(value)}
-                        onChange={() => toggleIntolerance(value)}
-                        className="sr-only"
+                      <IntoleranceCheckboxes
+                        label="Intolleranze o preferenze dei bambini"
+                        values={childrenIntolerances}
+                        onToggle={toggleChildrenIntolerance}
+                        otherValue={childrenIntolerancesOther}
+                        onOtherChange={setChildrenIntolerancesOther}
                       />
-                      <div
-                        className={`w-5 h-5 border-2 rounded-sm transition-colors flex items-center justify-center ${
-                          intolerances.includes(value)
-                            ? 'bg-[#1a4a2e] border-[#1a4a2e]'
-                            : 'border-[#1a4a2e]/40 group-hover:border-[#1a4a2e]/70'
-                        }`}
-                      >
-                        <AnimatePresence>
-                          {intolerances.includes(value) && (
-                            <motion.svg
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              exit={{ scale: 0 }}
-                              viewBox="0 0 12 10"
-                              className="w-3 h-3 text-[#d4af37]"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth={2}
-                            >
-                              <polyline points="1,5 4,8 11,1" />
-                            </motion.svg>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    </div>
-                    <span className="font-body text-sm text-[#1a4a2e]/80 leading-snug">
-                      {label}
-                    </span>
-                  </label>
-                ))}
-              </div>
-              <AnimatePresence>
-                {intolerances.includes('other') && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="mt-3">
-                      <label
-                        htmlFor="rsvp-intolerances-other"
-                        className="block font-cinzel text-xs uppercase tracking-widest mb-2 text-[#1a4a2e]/70"
-                      >
-                        Specifica <span aria-label="obbligatorio">*</span>
-                      </label>
-                      <textarea
-                        id="rsvp-intolerances-other"
-                        value={intolerancesOther}
-                        onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
-                          setIntolerancesOther(e.target.value)
-                        }
-                        maxLength={120}
-                        rows={2}
-                        aria-invalid={!!errors.intolerancesOther}
-                        aria-describedby={
-                          errors.intolerancesOther ? 'rsvp-intolerances-other-error' : undefined
-                        }
-                        className={inputClass(!!errors.intolerancesOther)}
-                      />
-                      <AnimatePresence>
-                        {errors.intolerancesOther && (
-                          <motion.p
-                            initial={{ opacity: 0, y: -4 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -4 }}
-                            id="rsvp-intolerances-other-error"
-                            className="mt-1.5 text-xs text-[#8b1a1a] font-body"
-                          >
-                            {errors.intolerancesOther}
-                          </motion.p>
-                        )}
-                      </AnimatePresence>
                     </div>
                   </motion.div>
                 )}

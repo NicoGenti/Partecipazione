@@ -1,6 +1,6 @@
 import { blobService, containerName } from '../shared/storage';
 import { handleCors } from '../shared/cors';
-import type { RsvpRecord, Intolerance, Recipient } from '../shared/types';
+import type { GuestIntolerances, RsvpRecord, Intolerance, Recipient } from '../shared/types';
 
 /* ──────────────────────────────────────────────────────────────
  * Modello v3 di Azure Functions (Node): context + req, $return per
@@ -71,7 +71,7 @@ function isValidRsvpRecord(v: unknown): v is RsvpRecord {
   if (typeof r.deviceId !== 'string' || r.deviceId.length > 64) return false;
   if (typeof r.fullName !== 'string' || r.fullName.length > 200) return false;
   if (typeof r.submittedAt !== 'string' || r.submittedAt.length > 50) return false;
-  if (!RECIPIENTS.includes(r.recipient as Recipient)) return false;
+  if (r.recipient !== undefined && !RECIPIENTS.includes(r.recipient as Recipient)) return false;
 
   const adults = Number(r.adults);
   if (!Number.isInteger(adults) || adults < 1 || adults > 20) return false;
@@ -101,6 +101,22 @@ function isValidRsvpRecord(v: unknown): v is RsvpRecord {
     (typeof r.intolerancesOther !== 'string' || r.intolerancesOther.length > 200)
   ) {
     return false;
+  }
+
+  // guestIntolerances is optional — accept both new and legacy records
+  if (r.guestIntolerances !== undefined) {
+    if (!Array.isArray(r.guestIntolerances)) return false;
+    for (const guest of r.guestIntolerances) {
+      if (typeof guest.name !== 'string' || guest.name.length > 200) return false;
+      if (!Array.isArray(guest.intolerances)) return false;
+      if (guest.intolerances.some((it) => !INTOLERANCES.includes(it as Intolerance))) return false;
+      if (
+        guest.intolerances.includes('other') &&
+        (typeof guest.intolerancesOther !== 'string' || guest.intolerancesOther.length > 200)
+      ) {
+        return false;
+      }
+    }
   }
 
   return true;
@@ -135,6 +151,11 @@ async function RsvpSubmit(context: V3Context, req: V3Request): Promise<V3Respons
     deviceId,
     fullName: body.fullName.trim(),
     intolerancesOther: body.intolerancesOther?.trim() ?? '',
+    guestIntolerances: body.guestIntolerances?.map((g: GuestIntolerances) => ({
+      ...g,
+      name: g.name.trim(),
+      intolerancesOther: g.intolerancesOther?.trim() ?? '',
+    })),
   };
 
   try {

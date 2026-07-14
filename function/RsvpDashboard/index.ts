@@ -43,9 +43,15 @@ export type Intolerance =
   | 'nut-allergy'
   | 'other';
 
+export interface GuestIntolerances {
+  name: string;
+  intolerances: Intolerance[];
+  intolerancesOther: string;
+}
+
 export interface RsvpRecord {
   deviceId: string;
-  recipient: Recipient;
+  recipient?: Recipient;
   fullName: string;
   adults: number;
   guestNames?: string[];
@@ -53,6 +59,8 @@ export interface RsvpRecord {
   childrenCount: number;
   intolerances: Intolerance[];
   intolerancesOther: string;
+  /** Per-guest intolerances (new format). Falls back to top-level `intolerances` for legacy records. */
+  guestIntolerances?: GuestIntolerances[];
   needsRoom: boolean;
   roomGuests: number;
   roomLocation: 'Villa Montegranelli';
@@ -193,6 +201,29 @@ function isRsvpRecord(v: unknown): v is RsvpRecord {
   );
 }
 
+function collectIntolerances(r: RsvpRecord): { list: Intolerance[]; others: string[] } {
+  if (r.guestIntolerances && r.guestIntolerances.length > 0) {
+    const list: Intolerance[] = [];
+    const others: string[] = [];
+    for (const g of r.guestIntolerances) {
+      for (const it of g.intolerances) {
+        if (!list.includes(it)) list.push(it);
+      }
+      if (g.intolerances.includes('other') && g.intolerancesOther?.trim()) {
+        others.push(`${g.name}: ${g.intolerancesOther.trim()}`);
+      }
+    }
+    return { list, others };
+  }
+  // Legacy: use top-level fields
+  return {
+    list: r.intolerances ?? [],
+    others: r.intolerances?.includes('other') && r.intolerancesOther?.trim()
+      ? [r.intolerancesOther.trim()]
+      : [],
+  };
+}
+
 async function streamToText(
   stream: NodeJS.ReadableStream | undefined,
 ): Promise<string> {
@@ -251,15 +282,13 @@ function summarize(rows: RsvpRecord[]): DashboardSummary {
       byRecipient[r.recipient] += 1;
     }
 
-    for (const it of r.intolerances ?? []) {
+    const { list, others } = collectIntolerances(r);
+    for (const it of list) {
       if (it in intolerances) {
         intolerances[it] += 1;
       }
     }
-
-    if (r.intolerances?.includes('other') && r.intolerancesOther?.trim()) {
-      intolerancesOther.push(r.intolerancesOther.trim());
-    }
+    intolerancesOther.push(...others);
 
     const submittedDay = (r.submittedAt ?? '').slice(0, 10);
     const slot = lastSevenDays.find((d) => d.date === submittedDay);

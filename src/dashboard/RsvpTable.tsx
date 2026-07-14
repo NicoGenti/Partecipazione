@@ -49,7 +49,7 @@ function compareRows(a: RsvpRecord, b: RsvpRecord, key: SortKey, dir: SortDir): 
     case 'submittedAt':
       return (a.submittedAt.localeCompare(b.submittedAt)) * mult;
     case 'recipient':
-      return a.recipient.localeCompare(b.recipient) * mult;
+      return (a.recipient ?? '').localeCompare(b.recipient ?? '') * mult;
     default:
       return 0;
   }
@@ -69,7 +69,13 @@ export default function RsvpTable({ rows }: Props) {
         r.fullName.toLowerCase().includes(q) ||
         (r.guestNames ?? []).some((n) => n.toLowerCase().includes(q)) ||
         (r.intolerancesOther ?? '').toLowerCase().includes(q) ||
-        RECIPIENT_LABELS[r.recipient].toLowerCase().includes(q)
+        (r.guestIntolerances ?? []).some(
+          (g) =>
+            g.name.toLowerCase().includes(q) ||
+            g.intolerances.some((it) => INTOLERANCE_LABELS[it]?.toLowerCase().includes(q)) ||
+            (g.intolerancesOther ?? '').toLowerCase().includes(q),
+        ) ||
+        (r.recipient ? RECIPIENT_LABELS[r.recipient].toLowerCase().includes(q) : false)
       );
     });
     return [...filtered].sort((a, b) => compareRows(a, b, sortKey, sortDir));
@@ -154,14 +160,18 @@ export default function RsvpTable({ rows }: Props) {
                       </td>
                       <td className="p-2 font-body text-sm text-[#1a4a2e] font-medium">{r.fullName}</td>
                       <td className="p-2 text-center">
-                        <span className="inline-flex px-2 py-0.5 rounded-full text-[0.6rem] font-cinzel uppercase tracking-wider border"
-                          style={{
-                            borderColor: r.recipient === 'nicolas' ? '#1a4a2e' : '#8b1a1a',
-                            color: r.recipient === 'nicolas' ? '#1a4a2e' : '#8b1a1a',
-                          }}
-                        >
-                          {RECIPIENT_LABELS[r.recipient]}
-                        </span>
+                        {r.recipient ? (
+                          <span className="inline-flex px-2 py-0.5 rounded-full text-[0.6rem] font-cinzel uppercase tracking-wider border"
+                            style={{
+                              borderColor: r.recipient === 'nicolas' ? '#1a4a2e' : '#8b1a1a',
+                              color: r.recipient === 'nicolas' ? '#1a4a2e' : '#8b1a1a',
+                            }}
+                          >
+                            {RECIPIENT_LABELS[r.recipient]}
+                          </span>
+                        ) : (
+                          <span className="text-[#1a4a2e]/30 text-[0.6rem] font-cinzel">—</span>
+                        )}
                       </td>
                       <td className="p-2 text-right font-body text-sm text-[#1a4a2e] tabular-nums">{r.adults}</td>
                       <td className="p-2 text-right font-body text-sm text-[#1a4a2e] tabular-nums">
@@ -188,9 +198,30 @@ export default function RsvpTable({ rows }: Props) {
                                 {r.guestNames && r.guestNames.length > 0 && (
                                   <p><strong className="font-cinzel text-[0.66rem] uppercase tracking-widest text-[#1a4a2e]/60">Accompagnatori:</strong> {r.guestNames.filter(Boolean).join(', ')}</p>
                                 )}
-                                <p><strong className="font-cinzel text-[0.66rem] uppercase tracking-widest text-[#1a4a2e]/60">Intolleranze:</strong> {r.intolerances.length > 0 ? r.intolerances.map((it) => INTOLERANCE_LABELS[it]).join(', ') : 'nessuna'}</p>
-                                {r.intolerancesOther && (
-                                  <p><strong className="font-cinzel text-[0.66rem] uppercase tracking-widest text-[#1a4a2e]/60">Dettaglio:</strong> {r.intolerancesOther}</p>
+                                {r.guestIntolerances && r.guestIntolerances.length > 0 ? (
+                                  <div>
+                                    <p className="font-cinzel text-[0.66rem] uppercase tracking-widest text-[#1a4a2e]/60 mb-1">Intolleranze per invitato:</p>
+                                    {r.guestIntolerances.map((g, i) => (
+                                      <div key={i} className="ml-2 border-l-2 border-[#d4af37]/30 pl-3 py-0.5">
+                                        <span className="font-semibold text-[#1a4a2e]">{g.name}: </span>
+                                        {g.intolerances.length > 0 ? (
+                                          <span className="text-[#1a4a2e]/80">
+                                            {g.intolerances.map((it) => INTOLERANCE_LABELS[it]).join(', ')}
+                                            {g.intolerances.includes('other') && g.intolerancesOther ? ` (${g.intolerancesOther})` : ''}
+                                          </span>
+                                        ) : (
+                                          <span className="text-[#1a4a2e]/40 italic">nessuna</span>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <>
+                                    <p><strong className="font-cinzel text-[0.66rem] uppercase tracking-widest text-[#1a4a2e]/60">Intolleranze:</strong> {r.intolerances.length > 0 ? r.intolerances.map((it) => INTOLERANCE_LABELS[it]).join(', ') : 'nessuna'}</p>
+                                    {r.intolerancesOther && (
+                                      <p><strong className="font-cinzel text-[0.66rem] uppercase tracking-widest text-[#1a4a2e]/60">Dettaglio:</strong> {r.intolerancesOther}</p>
+                                    )}
+                                  </>
                                 )}
                                 <p className="text-xs text-[#1a4a2e]/40 font-mono break-all">deviceId: {r.deviceId}</p>
                               </div>

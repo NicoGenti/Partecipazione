@@ -8,9 +8,15 @@ export type Intolerance =
   | 'nut-allergy'
   | 'other';
 
+export interface GuestIntolerances {
+  name: string;
+  intolerances: Intolerance[];
+  intolerancesOther: string;
+}
+
 export interface RsvpRecord {
   deviceId: string;
-  recipient: Recipient;
+  recipient?: Recipient;
   fullName: string;
   adults: number;
   guestNames: string[];
@@ -18,6 +24,8 @@ export interface RsvpRecord {
   childrenCount: number;
   intolerances: Intolerance[];
   intolerancesOther: string;
+  /** Per-guest intolerances (new format). Falls back to top-level `intolerances` for legacy records. */
+  guestIntolerances?: GuestIntolerances[];
   needsRoom: boolean;
   roomGuests: number;
   roomLocation: 'Villa Montegranelli';
@@ -85,9 +93,21 @@ export function validateRsvp(
 
   if (d.intolerances.includes('other')) {
     if (!d.intolerancesOther.trim()) {
-      e.intolerancesOther = 'Specifica l\'intolleranza o la preferenza';
+      e.intolerancesOther = 'Inserisci le tue intolleranze o preferenze';
     } else if (d.intolerancesOther.length > 120) {
       e.intolerancesOther = 'Massimo 120 caratteri';
+    }
+  }
+
+  if (d.guestIntolerances) {
+    for (const guest of d.guestIntolerances) {
+      if (
+        guest.intolerances.includes('other') &&
+        !guest.intolerancesOther.trim()
+      ) {
+        e.guestIntolerances = 'Specifica tutte le intolleranze "Altro"';
+        break;
+      }
     }
   }
 

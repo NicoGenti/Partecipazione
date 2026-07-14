@@ -4,6 +4,25 @@ import {
   RECIPIENT_LABELS as RECIP_LABELS,
 } from './types';
 
+function formatGuestIntolerances(r: RsvpRecord): string {
+  if (!r.guestIntolerances || r.guestIntolerances.length === 0) {
+    // Legacy format
+    const legacy = (r.intolerances ?? [])
+      .map((it: Intolerance) => LABELS[it] ?? String(it))
+      .join(', ');
+    return r.intolerancesOther ? `${legacy} [${r.intolerancesOther}]` : legacy;
+  }
+  return r.guestIntolerances
+    .map((g) => {
+      const its = g.intolerances.map((it) => LABELS[it] ?? String(it)).join(', ');
+      const suffix = g.intolerances.includes('other' as Intolerance) && g.intolerancesOther
+        ? ` (${g.intolerancesOther})`
+        : '';
+      return `${g.name}: ${its}${suffix}`;
+    })
+    .join(' | ');
+}
+
 /**
  * Esporta un array di RsvpRecord in CSV UTF-8 con BOM.
  * - Separatore: ';' (compatibile con Excel italiano).
@@ -26,22 +45,17 @@ export function buildRsvpCsv(rows: RsvpRecord[]): string {
   const lines: string[] = [headers.join(';')];
 
   for (const r of rows) {
-    const intolerancesText = (r.intolerances ?? [])
-      .map((it: Intolerance) => LABELS[it] ?? String(it))
-      .join(', ');
-
     const submitted = formatDateItalian(r.submittedAt);
 
     const guestNamesText = (r.guestNames ?? []).filter(Boolean).join(', ');
 
     const fields = [
       r.fullName ?? '',
-      RECIP_LABELS[r.recipient] ?? r.recipient,
+      r.recipient ? (RECIP_LABELS[r.recipient] ?? r.recipient) : '',
       String(r.adults ?? 0),
       guestNamesText,
       String(r.bringingChildren ? r.childrenCount ?? 0 : 0),
-      intolerancesText,
-      r.intolerancesOther ?? '',
+      formatGuestIntolerances(r),
       submitted,
     ];
 

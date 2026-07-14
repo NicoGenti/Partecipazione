@@ -6,7 +6,7 @@ import PhotoAlbum from './PhotoAlbum';
 import RsvpModal from './RsvpModal';
 import { buildBlobUrl } from './azure';
 import { AnimateNumber } from '@/src/components/ui/animated-blur-number';
-import type { Recipient } from './rsvp';
+
 import themeSong from '../assets/harry_potter_theme.mp3';
 
 // Route #admin caricata in lazy: bundle invito resta leggero.
@@ -191,7 +191,7 @@ export default function App() {
   const [introDone, setIntroDone] = useState<boolean>(
     () => window.location.hash.toLowerCase() === '#foto',
   );
-  const [rsvpRecipient, setRsvpRecipient] = useState<Recipient | null>(null);
+  const [showRsvpForm, setShowRsvpForm] = useState(false);
 
   if (adminRoute) {
     const exitAdmin = () => {
@@ -510,16 +510,10 @@ export default function App() {
               <strong style={{ color: 'var(--ink)' }}>entro il 12 agosto 2026</strong>.{' '}
               Un messaggio su WhatsApp vale quanto un gufo postale — e arriva prima.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <PrimaryBtn onClick={() => setRsvpRecipient('nicolas')}>
-                <Send size={14} />
-                Nicolas · 331 958 1921
-              </PrimaryBtn>
-              <GhostBtn onClick={() => setRsvpRecipient('giulia')}>
-                <Send size={14} />
-                Giulia · 366 204 1886
-              </GhostBtn>
-            </div>
+            <PrimaryBtn onClick={() => setShowRsvpForm(true)}>
+              <Send size={14} />
+              Invia il tuo gufo di risposta
+            </PrimaryBtn>
           </Section>
 
           <Rule />
@@ -661,10 +655,9 @@ export default function App() {
 
         {/* ── RSVP modal ────────────────────────────────────────────── */}
         <AnimatePresence>
-          {rsvpRecipient && (
+          {showRsvpForm && (
             <RsvpModal
-              recipient={rsvpRecipient}
-              onClose={() => setRsvpRecipient(null)}
+              onClose={() => setShowRsvpForm(false)}
             />
           )}
         </AnimatePresence>
