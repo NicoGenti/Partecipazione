@@ -109,6 +109,7 @@ Imposta queste app settings dal portale (Configuration → Application settings)
 |---|---|
 | `STORAGE_ACCOUNT_URL` | es. `https://<account>.blob.core.windows.net` |
 | `RSVP_CONTAINER_NAME` | il container dove vengono salvati i dati (es. `partecipazione`) |
+| `CONSENT_CONTAINER_NAME` | container **privato** per consensi e RSVP (deve essere creato in anticipo con accesso pubblico disattivato; default: `RSVP_CONTAINER_NAME`) |
 | `ADMIN_KEY` | passphrase lunga (≥16 caratteri) che solo tu e Giulia conoscete |
 | `CORS_ORIGINS` | `https://nicogenti.github.io,http://localhost:3000` |
 | `CONSENT_TEMPLATE_BLOB_PATH` | percorso del template HTML per il documento di consenso, es. `templates/privacy-consent-v1.html` |

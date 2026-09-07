@@ -1,5 +1,6 @@
-import { blobService, containerName } from '../shared/storage';
+import { blobService, privateContainerName } from '../shared/storage';
 import { handleCors } from '../shared/cors';
+import { rateLimited, getClientIp } from '../shared/rateLimit';
 import type { GuestIntolerances, RsvpRecord, Intolerance, Recipient } from '../shared/types';
 
 /* ──────────────────────────────────────────────────────────────
@@ -126,6 +127,11 @@ async function RsvpSubmit(context: V3Context, req: V3Request): Promise<V3Respons
   const cors = handleCors(req, context);
   if (cors.handled) return context.res as V3Response;
 
+  const clientIp = getClientIp(req);
+  if (rateLimited(`rsvp:${clientIp}`, 10)) {
+    return buildResponse(429, { error: 'Troppi tentativi. Riprova tra un minuto.' }, cors.headers);
+  }
+
   if (req.method?.toUpperCase() !== 'POST') {
     return buildResponse(405, { error: 'Metodo non consentito' }, cors.headers);
   }
@@ -146,20 +152,31 @@ async function RsvpSubmit(context: V3Context, req: V3Request): Promise<V3Respons
     return buildResponse(400, { error: 'deviceId non valido' }, cors.headers);
   }
 
+  // Persiste SOLO i campi validati: nessuna chiave extra del client
+  // può finire nel blob tramite lo spread.
   const record: RsvpRecord = {
-    ...body,
     deviceId,
+    recipient: body.recipient,
     fullName: body.fullName.trim(),
+    adults: body.adults,
+    guestNames: body.guestNames,
+    bringingChildren: body.bringingChildren,
+    childrenCount: body.childrenCount,
+    intolerances: body.intolerances,
     intolerancesOther: body.intolerancesOther?.trim() ?? '',
     guestIntolerances: body.guestIntolerances?.map((g: GuestIntolerances) => ({
-      ...g,
       name: g.name.trim(),
+      intolerances: g.intolerances,
       intolerancesOther: g.intolerancesOther?.trim() ?? '',
     })),
+    needsRoom: body.needsRoom,
+    roomGuests: body.roomGuests,
+    roomLocation: body.roomLocation,
+    submittedAt: body.submittedAt,
   };
 
   try {
-    const containerClient = blobService.getContainerClient(containerName);
+    const containerClient = blobService.getContainerClient(privateContainerName);
     const blobName = `rsvp/${deviceId}.json`;
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 

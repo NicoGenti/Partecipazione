@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from 'crypto';
-import { blobService, containerName } from '../shared/storage';
+import { blobService, privateContainerName } from '../shared/storage';
 import { handleCors } from '../shared/cors';
+import { rateLimited, getClientIp } from '../shared/rateLimit';
 
 /* ──────────────────────────────────────────────────────────────
  * Tipi minimi compatibili col runtime v3 di Azure Functions (Node).
@@ -102,37 +103,6 @@ interface DashboardReply {
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
 /* ──────────────────────────────────────────────────────────────
- * Rate limiting in-memory (10 tentativi / minuto / IP).
- * ────────────────────────────────────────────────────────────── */
-
-interface RateEntry {
-  count: number;
-  resetAt: number;
-}
-
-const attempts = new Map<string, RateEntry>();
-const RATE_LIMIT_WINDOW_MS = 60 * 1000;
-const RATE_LIMIT_MAX_ATTEMPTS = 10;
-
-function getClientIp(req: V3Request): string {
-  // x-forwarded-for può contenere più IP separati da virgola; prendiamo il primo.
-  const forwarded = req.headers?.['x-forwarded-for'] ?? '';
-  if (forwarded) return forwarded.split(',')[0].trim();
-  return req.headers?.['x-real-ip'] ?? 'unknown';
-}
-
-function rateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = attempts.get(ip);
-  if (!entry || now > entry.resetAt) {
-    attempts.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-    return false;
-  }
-  entry.count += 1;
-  return entry.count > RATE_LIMIT_MAX_ATTEMPTS;
-}
-
-/* ──────────────────────────────────────────────────────────────
  * Autorizzazione
  *
  * Il client DEVE inviare l'header 'x-admin-key' (Node HTTP lowercase)
@@ -162,7 +132,8 @@ function authorized(req: V3Request): boolean {
  * ────────────────────────────────────────────────────────────── */
 
 async function fetchAllRsvpRecords(): Promise<RsvpRecord[]> {
-  const containerClient = blobService.getContainerClient(containerName);
+  // RsvpSubmit scrive nel container privato: la dashboard DEVE leggere da lì.
+  const containerClient = blobService.getContainerClient(privateContainerName);
 
   const records: RsvpRecord[] = [];
   // listBlobsFlat: elenca TUTTI i blob sotto 'rsvp/' ricorsivamente.
@@ -336,7 +307,7 @@ async function RsvpDashboard(context: V3Context, req: V3Request): Promise<V3Resp
   context.log.info(`HTTP trigger RsvpDashboard ricevuto da ${origin}`);
 
   const clientIp = getClientIp(req);
-  if (rateLimited(clientIp)) {
+  if (rateLimited(`dashboard:${clientIp}`, 10)) {
     return buildResponse(429, { error: 'Troppi tentativi. Riprova tra un minuto.' }, cors.headers);
   }
 

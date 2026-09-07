@@ -28,3 +28,6 @@ function createBlobServiceClient(): BlobServiceClient {
 
 export const blobService = createBlobServiceClient();
 export const containerName = process.env.RSVP_CONTAINER_NAME ?? process.env.AZURE_CONTAINER ?? 'matrimonioblob';
+// Container privato per artefatti GDPR-sensibili (consensi/RSVP):
+// niente accesso pubblico, le Function autenticano via SDK.
+export const privateContainerName = process.env.CONSENT_CONTAINER_NAME ?? containerName;
