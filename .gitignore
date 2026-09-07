@@ -30,6 +30,13 @@ $RECYCLE.BIN/
 .omo/
 .codegraph/
 .claude/
+.opencode/
+.context/
+plan/
+AGENTS.md
+CONTRIBUTING.md
+README.md
+CLAUDE.md
 
 # TypeScript build cache
 *.tsbuildinfo
