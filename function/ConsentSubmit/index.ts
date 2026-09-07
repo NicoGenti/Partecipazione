@@ -1,5 +1,5 @@
 import { createHash } from 'crypto';
-import { blobService, containerName, privateContainerName } from '../shared/storage';
+import { blobService, privateContainerName } from '../shared/storage';
 import { handleCors } from '../shared/cors';
 import { rateLimited, getClientIp } from '../shared/rateLimit';
 import type { ConsentRecord } from '../shared/types';
@@ -129,7 +129,8 @@ async function fetchTemplate(): Promise<{ content: string; hash: string }> {
     throw new Error('CONSENT_TEMPLATE_BLOB_PATH non configurato');
   }
 
-  const containerClient = blobService.getContainerClient(containerName);
+  // Il template vive nel container privato: niente dati GDPR nel pubblico.
+  const containerClient = blobService.getContainerClient(privateContainerName);
   const blobClient = containerClient.getBlobClient(templatePath);
   const download = await blobClient.download();
 

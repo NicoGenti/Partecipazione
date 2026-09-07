@@ -40,3 +40,6 @@ CLAUDE.md
 
 # TypeScript build cache
 *.tsbuildinfo
+
+# Azure Functions deploy artifacts
+function/deploy.zip
