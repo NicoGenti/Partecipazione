@@ -3,6 +3,12 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Shield } from 'lucide-react';
 import { saveConsent, genUUID } from './azure';
 
+/**
+ * Version of the patto text. Bump this whenever the patto text changes:
+ * stored consent records carrying a different version are treated as absent
+ * (getStoredConsent returns null), so every guest re-reads and re-accepts
+ * the updated patto once.
+ */
 const CONSENT_VERSION = 'v1';
 const STORAGE_KEY     = 'partecipazione_consent';
 
@@ -10,20 +16,35 @@ export interface ConsentData {
   deviceId: string;
   accepted: boolean;
   nickname: string;
+  /** Patto text version this consent was accepted under (must equal CONSENT_VERSION). */
+  version: string;
 }
 
 export function getStoredConsent(): ConsentData | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as ConsentData) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as ConsentData;
+    // Version gate: a record accepted under an older patto text is stale —
+    // treat it as no consent so the updated patto must be accepted again.
+    if (parsed.version !== CONSENT_VERSION) return null;
+    return parsed;
   } catch {
     return null;
   }
 }
 
 function getOrCreateDeviceId(): string {
-  const stored = getStoredConsent();
-  if (stored?.deviceId) return stored.deviceId;
+  // Read the RAW stored record, not getStoredConsent(): even when the version
+  // gate rejects the consent, the deviceId must survive so re-consenting
+  // keeps the same device identity.
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const parsed = raw ? (JSON.parse(raw) as ConsentData) : null;
+    if (parsed?.deviceId) return parsed.deviceId;
+  } catch {
+    /* unreadable record — fall through to a fresh id */
+  }
   return genUUID();
 }
 
@@ -62,10 +83,17 @@ export default function PrivacyModal({ onAccepted, onClose }: Props) {
       },
     };
 
-    await saveConsent(record);
+    const consentData: ConsentData = { deviceId, accepted: true, nickname: nickname.trim(), version: CONSENT_VERSION };
 
-    const consentData: ConsentData = { deviceId, accepted: true, nickname: nickname.trim() };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(consentData));
+    try {
+      await saveConsent(record);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(consentData));
+    } catch {
+      setError('Impossibile salvare il consenso. Controlla la connessione e riprova.');
+      setSaving(false);
+      return;
+    }
+
     setSaving(false);
     onAccepted(consentData);
   };

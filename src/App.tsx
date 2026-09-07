@@ -332,14 +332,26 @@ export default function App() {
               { id: 'regalo',    label: 'Regalo' },
               { id: 'album',     label: 'Album' },
             ].map(({ id, label }) => (
-              <a
-                key={id}
-                href={`#${id}`}
-                className="font-cinzel text-[0.78rem] tracking-[0.14em] uppercase transition-colors hover:opacity-100"
-                style={{ color: 'var(--ink-muted)' }}
-              >
-                {label}
-              </a>
+              id === 'album' ? (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => { setIntroDone(true); setShowAlbum(true); }}
+                  className="font-cinzel text-[0.78rem] tracking-[0.14em] uppercase transition-colors hover:opacity-100"
+                  style={{ color: 'var(--ink-muted)' }}
+                >
+                  {label}
+                </button>
+              ) : (
+                <a
+                  key={id}
+                  href={`#${id}`}
+                  className="font-cinzel text-[0.78rem] tracking-[0.14em] uppercase transition-colors hover:opacity-100"
+                  style={{ color: 'var(--ink-muted)' }}
+                >
+                  {label}
+                </a>
+              )
             ))}
           </nav>
 

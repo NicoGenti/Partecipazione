@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { blobService, containerName } from '../shared/storage';
 import { handleCors } from '../shared/cors';
+import { rateLimited, getClientIp } from '../shared/rateLimit';
 
 interface V3Context {
   log: {
@@ -163,6 +164,13 @@ async function PhotoUpload(context: V3Context, req: V3Request): Promise<V3Respon
   const cors = handleCors(req, context);
   if (cors.handled) return context.res as V3Response;
 
+  const clientIp = getClientIp(req);
+  // 20/min: il client carica le selezioni multi-file in sequenza,
+  // 5/min avrebbe bloccato gli ospiti con più di 5 foto.
+  if (rateLimited(`photo:${clientIp}`, 20)) {
+    return buildResponse(429, { error: 'Troppi caricamenti. Riprova tra un minuto.' }, cors.headers);
+  }
+
   context.log.info(
     `PhotoUpload request: method=${req.method ?? 'undefined'} ` +
     `content-type=${req.headers?.['content-type'] ?? 'missing'} ` +
@@ -203,7 +211,11 @@ async function PhotoUpload(context: V3Context, req: V3Request): Promise<V3Respon
 
   const fileName = sanitizeFileName(String(rawFileName));
   const id = randomUUID();
-  const blobName = `photos/${id}.${ext}`;
+  // Timestamp invertito a larghezza fissa (max epoch in ms meno now):
+  // l'ordinamento lessicografico ascendente di Azure elenca le foto
+  // piu' recenti al primo posto (PhotoList si affida a questo ordine).
+  const invertedTs = String(253402300799999 - Date.now()).padStart(15, '0');
+  const blobName = `photos/${invertedTs}-${id}.${ext}`;
 
   try {
     const containerClient = blobService.getContainerClient(containerName);

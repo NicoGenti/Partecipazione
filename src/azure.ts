@@ -39,6 +39,18 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
+/**
+ * Thrown when the photo-upload API responds with a non-2xx status.
+ * The message is the server's Italian error text parsed from the JSON body
+ * (e.g. "File troppo grande (max 10 MB)"), so callers can surface it verbatim.
+ */
+export class UploadApiError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'UploadApiError';
+  }
+}
+
 export async function uploadPhotoBase64(
   base64: string,
   fileName: string,
@@ -58,7 +70,18 @@ export async function uploadPhotoBase64(
     }),
   });
 
-  if (!res.ok) throw new Error(`Upload failed: ${res.status} ${res.statusText}`);
+  if (!res.ok) {
+    // Surface the server's rejection reason (e.g. "File troppo grande (max 10 MB)",
+    // "Formato immagine non supportato") instead of a generic status line.
+    let message = `Upload failed: ${res.status} ${res.statusText}`;
+    try {
+      const body = (await res.json()) as { error?: string };
+      if (typeof body.error === 'string' && body.error) message = body.error;
+    } catch {
+      // Body is not JSON — keep the status-line fallback.
+    }
+    throw new UploadApiError(message);
+  }
 }
 
 export async function uploadPhoto(file: File, blobName: string): Promise<void> {
