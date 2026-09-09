@@ -14,6 +14,7 @@ import type { DashboardReply } from './types';
 import { INTOLERANCE_LABELS, RECIPIENT_LABELS } from './types';
 import { downloadCsv } from './csvExport';
 import RsvpTable from './RsvpTable';
+import PhotoManager from './PhotoManager';
 
 interface Props {
   data: DashboardReply;
@@ -259,6 +260,8 @@ export default function DashboardView({
 
           <RsvpTable rows={rows} />
         </motion.section>
+
+        <PhotoManager />
 
         <p className="text-center font-body text-xs text-[#fdfaf1]/30 pt-2 pb-6">
           Riservato a Nicolas e Giulia · La passphrase non è mai salvata nel bundle del sito

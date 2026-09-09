@@ -1,0 +1,18 @@
+{
+  "bindings": [
+    {
+      "name": "req",
+      "type": "httpTrigger",
+      "direction": "in",
+      "methods": ["post", "options"],
+      "authLevel": "anonymous",
+      "route": "photos/delete"
+    },
+    {
+      "name": "$return",
+      "type": "http",
+      "direction": "out"
+    }
+  ],
+  "scriptFile": "../dist/PhotoDelete/index.js"
+}

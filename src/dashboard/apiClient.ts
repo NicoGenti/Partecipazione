@@ -96,3 +96,69 @@ export async function fetchDashboard(
     throw new Error('Risposta del server non leggibile.');
   }
 }
+
+export interface PhotoDeleteReply {
+  deleted: string[];
+  missing: string[];
+  failed: { name: string; error: string }[];
+}
+
+/**
+ * Determina la base URL delle API foto (PhotoDelete):
+ * 1. VITE_API_BASE_URL in .env (stessa base di listPhotos/upload).
+ * 2. fallback localhost per dev.
+ */
+function resolvePhotoApiBase(): string {
+  const env = import.meta.env.VITE_API_BASE_URL as string | undefined;
+  if (env && env.length > 0) return env.replace(/\/$/, '');
+  return 'http://localhost:7071';
+}
+
+/**
+ * Elimina in batch foto dal container pubblico via POST /api/photos/delete.
+ * Ritorna `{ deleted, missing, failed }` oppure solleva un Error con
+ * messaggio localizzato (risposta non-2xx o rete non raggiungibile).
+ */
+export async function deletePhotos(
+  adminKey: string,
+  names: string[],
+): Promise<PhotoDeleteReply> {
+  const url = `${resolvePhotoApiBase()}/api/photos/delete`;
+  let res: Response;
+
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-Admin-Key': adminKey,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ names }),
+    });
+  } catch {
+    throw new Error(
+      'Impossibile eliminare le foto. Verifica la connessione o riprova più tardi.',
+    );
+  }
+
+  if (!res.ok) {
+    let msg =
+      res.status === 401
+        ? 'Admin-Key errata o non riconosciuta.'
+        : 'Impossibile eliminare le foto. Riprova più tardi.';
+    try {
+      const body = (await res.json()) as DashboardError;
+      if (body?.error) msg = body.error;
+    } catch {
+      /* corpo non JSON — mantengo il messaggio di default */
+    }
+    throw new Error(msg);
+  }
+
+  try {
+    return (await res.json()) as PhotoDeleteReply;
+  } catch {
+    throw new Error('Impossibile eliminare le foto. Riprova più tardi.');
+  }
+}

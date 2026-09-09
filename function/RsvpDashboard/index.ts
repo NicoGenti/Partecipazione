@@ -1,7 +1,7 @@
-import { createHash, timingSafeEqual } from 'crypto';
 import { blobService, privateContainerName } from '../shared/storage';
 import { handleCors } from '../shared/cors';
 import { rateLimited, getClientIp } from '../shared/rateLimit';
+import { authorized } from '../shared/adminAuth';
 
 /* ──────────────────────────────────────────────────────────────
  * Tipi minimi compatibili col runtime v3 di Azure Functions (Node).
@@ -101,31 +101,6 @@ interface DashboardReply {
 }
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
-
-/* ──────────────────────────────────────────────────────────────
- * Autorizzazione
- *
- * Il client DEVE inviare l'header 'x-admin-key' (Node HTTP lowercase)
- * contenente la passphrase configurata come app setting ADMIN_KEY.
- * Confronto a tempo costante tramite timingSafeEqual su hash SHA-256.
- * ────────────────────────────────────────────────────────────── */
-
-function secureCompare(a: string, b: string): boolean {
-  const ha = createHash('sha256').update(a).digest();
-  const hb = createHash('sha256').update(b).digest();
-  return timingSafeEqual(ha, hb);
-}
-
-function authorized(req: V3Request): boolean {
-  const expected = process.env.ADMIN_KEY;
-  if (!expected || expected.length < 16) return false;
-
-  const headers = req.headers ?? {};
-  const received = (headers['x-admin-key'] ?? '').trim();
-  if (!received) return false;
-
-  return secureCompare(received, expected);
-}
 
 /* ──────────────────────────────────────────────────────────────
  * Lettura blob rsvp/
