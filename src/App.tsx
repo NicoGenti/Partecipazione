@@ -40,7 +40,7 @@ function downloadCalendar() {
   URL.revokeObjectURL(url);
 }
 
-/* ── Numbered section layout ──────────────────────────────────── */
+/* -- Numbered section layout -- */
 
 interface SectionProps {
   number: string;
@@ -92,7 +92,7 @@ function Section({ number, id, title, children, delay = 0 }: SectionProps) {
   );
 }
 
-/* ── Gold divider ───────────────────────────────────────────────── */
+/* -- Gold divider -- */
 
 function Rule() {
   return (
@@ -102,7 +102,7 @@ function Rule() {
   );
 }
 
-/* ── Button primitives ──────────────────────────────────────────── */
+/* -- Button primitives -- */
 
 const btnBase =
   'inline-flex items-center gap-2 px-6 py-3 rounded-[2px] text-[0.88rem] tracking-[0.1em] uppercase transition-all active:translate-y-px font-cinzel';
@@ -149,7 +149,7 @@ function GhostBtn({ onClick, href, target, rel, children }: {
   );
 }
 
-/* ── Main component ─────────────────────────────────────────────── */
+/* -- Main component -- */
 
 export default function App() {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -256,17 +256,18 @@ export default function App() {
     setTimeout(() => setCopiedIban(false), 2000);
   };
 
-  // Countdown
+  // Countdown before the wedding, count-up afterwards
   const WEDDING = new Date('2026-09-12T17:00:00+02:00').getTime();
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
-  const timeLeft    = Math.max(0, WEDDING - now);
-  const daysLeft    = Math.floor(timeLeft / 86_400_000);
-  const hoursLeft   = Math.floor((timeLeft % 86_400_000) / 3_600_000);
-  const minutesLeft = Math.floor((timeLeft % 3_600_000) / 60_000);
+  const isPast      = now >= WEDDING;
+  const diff        = Math.abs(now - WEDDING);
+  const daysLeft    = Math.floor(diff / 86_400_000);
+  const hoursLeft   = Math.floor((diff % 86_400_000) / 3_600_000);
+  const minutesLeft = Math.floor((diff % 3_600_000) / 60_000);
 
   return (
     <div
@@ -291,7 +292,7 @@ export default function App() {
         }}
       />
 
-      {/* Page content — fades in after intro */}
+      {/* Page content - fades in after intro */}
       <motion.div
         animate={{ opacity: introDone ? 1 : 0, scale: introDone ? 1 : 0.96 }}
         transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
@@ -306,7 +307,7 @@ export default function App() {
           Vai al contenuto
         </a>
 
-        {/* ── Header ─────────────────────────────────────────────── */}
+        {/* -- Header -- */}
         <header
           className="sticky top-0 z-50 flex items-center gap-3 px-6 sm:px-10 h-[3.75rem] border-b"
           style={{
@@ -382,7 +383,7 @@ export default function App() {
         <div className="letter-sheet mx-3 sm:mx-auto max-w-3xl sm:mt-8 sm:mb-12 mt-4 mb-8 rounded-[3px] overflow-hidden">
         <main id="contenuto">
 
-          {/* ── Hero ─────────────────────────────────────────────── */}
+          {/* -- Hero -- */}
           <section className="max-w-2xl mx-auto px-6 sm:px-10 pt-20 pb-16 sm:pt-28 sm:pb-24 text-center" style={{ paddingTop: '50px' }}>
             <img
               src={hogwartsLogo}
@@ -419,13 +420,13 @@ export default function App() {
               <em style={{ color: 'var(--ink)' }}>Biblioteca Sperelliana, ore 17:00 — Gubbio (PG)</em>
             </p>
 
-            {/* Countdown */}
-            <div role="timer" aria-label="Tempo rimanente al matrimonio" className="mb-10">
+            {/* Countdown / count-up */}
+            <div role="timer" aria-label={isPast ? 'Tempo trascorso dal matrimonio' : 'Tempo rimanente al matrimonio'} className="mb-10">
               <p
                 className="font-cinzel text-[0.78rem] tracking-[0.22em] uppercase mb-3"
                 style={{ color: 'var(--ink-muted)' }}
               >
-                Mancano al fatidico sì
+                {isPast ? 'Da quel fatidico sì' : 'Mancano al fatidico sì'}
               </p>
               <div className="flex items-baseline justify-center gap-1 sm:gap-2 flex-wrap">
                 <AnimateNumber
@@ -467,7 +468,7 @@ export default function App() {
 
           <Rule />
 
-          {/* ── I. La cerimonia ──────────────────────────────────── */}
+          {/* -- I. La cerimonia -- */}
           <Section number="I" id="cerimonia" title="La cerimonia">
             <p className="font-semibold mb-1" style={{ color: 'var(--ink)' }}>
               Sabato 12 settembre 2026 · ore 17:00
@@ -491,7 +492,7 @@ export default function App() {
 
           <Rule />
 
-          {/* ── II. Il ricevimento ───────────────────────────────── */}
+          {/* -- II. Il ricevimento -- */}
           <Section number="II" id="ricevimento" title="Il ricevimento" delay={0.05}>
             <p className="font-semibold mb-1" style={{ color: 'var(--ink)' }}>
               A seguire la cerimonia
@@ -515,7 +516,7 @@ export default function App() {
 
           <Rule />
 
-          {/* ── III. Invia il gufo (RSVP) ────────────────────────── */}
+          {/* -- III. Invia il gufo (RSVP) -- */}
           <Section number="III" id="rsvp" title="Invia il gufo" delay={0.05}>
             <p className="mb-6 leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
               È gradita gentile conferma{' '}
@@ -530,7 +531,7 @@ export default function App() {
 
           <Rule />
 
-          {/* ── IV. Partecipa alla magia (regalo) ───────────────── */}
+          {/* -- IV. Partecipa alla magia (regalo) -- */}
           <Section number="IV" id="regalo" title="Partecipa alla magia" delay={0.05}>
             <p className="mb-6 leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
               La vostra presenza è il regalo più grande. Se desiderate contribuire
@@ -544,7 +545,7 @@ export default function App() {
 
           <Rule />
 
-          {/* ── V. Album della magia ────────────────────────────── */}
+          {/* -- V. Album della magia -- */}
           <Section number="V" id="album" title="L'album della magia" delay={0.05}>
             <p className="mb-6 leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
               Durante e dopo la festa, carica le tue foto nell'album condiviso:
@@ -561,7 +562,7 @@ export default function App() {
 
         </main>
 
-        {/* ── Footer ───────────────────────────────────────────────── */}
+        {/* -- Footer -- */}
         <footer
           className="border-t text-center py-16 px-6"
           style={{ borderColor: 'var(--rule)' }}
@@ -584,7 +585,7 @@ export default function App() {
         </footer>
         </div>
 
-        {/* ── Photo album overlay ───────────────────────────────────── */}
+        {/* -- Photo album overlay -- */}
         <AnimatePresence>
           {showAlbum && (
             <PhotoAlbum
@@ -598,7 +599,7 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* ── Ticket / gift modal ───────────────────────────────────── */}
+        {/* -- Ticket / gift modal -- */}
         <AnimatePresence mode="wait">
           {showTicket && (
             <motion.div
@@ -665,7 +666,7 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* ── RSVP modal ────────────────────────────────────────────── */}
+        {/* -- RSVP modal -- */}
         <AnimatePresence>
           {showRsvpForm && (
             <RsvpModal
